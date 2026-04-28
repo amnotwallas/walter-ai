@@ -1,12 +1,12 @@
 {
   "meta": {
     "theme": "professional",
-    "lastModified": "2026-04-25T00:00:00.000Z"
+    "lastModified": "2026-04-27T00:00:00.000Z"
   },
   "basics": {
     "name": "Walter Jahir Ambriz Reyna",
     "label": "Backend & AI Engineer",
-    "summary": "Backend & AI Engineer with production experience building systems that connect LLMs, APIs, and live data sources into reliable, scalable services using Python and FastAPI. Specialized in multi-agent orchestration, LLM integration, and automated evaluation pipelines deployed in real-world environments. Experienced owning backend services end-to-end — from API design and integrations to deployments, monitoring, and CI/CD. Comfortable working independently in fast-paced, early-stage environments and translating complex business problems into practical technical solutions.",
+    "summary": "Backend & AI Engineer with production experience building systems that connect LLMs, APIs, and live data into reliable, scalable services using Python and FastAPI. I specialize in multiagent orchestration, LLM integration, and automated evaluation pipelines. I've owned backend services from start to finish, handling API design, integrations, deployment, monitoring, and CI/CD. I work well independently in fast paced startups and enjoy turning complex business problems into working technical solutions.",
     "website": "walterambriz.dev",
     "url": "https://github.com/amnotwallas",
     "email": "walterardev@gmail.com",
@@ -41,30 +41,54 @@
     },
     {
       "name": "Backend Development",
-      "keywords": ["FastAPI", "REST APIs", "microservices", "service-layer architecture", "structured validation", "JWT", "RBAC", "SSE (real-time streaming)"]
+      "keywords": [
+        "FastAPI",
+        "REST APIs",
+        "microservices",
+        "service layer architecture",
+        "request validation",
+        "JWT",
+        "RBAC",
+        "server sent events"
+      ]
     },
     {
       "name": "AI & LLM Systems",
-      "keywords": ["LLM integration (OpenAI APIs)", "multi-agent orchestration", "tool use", "prompt engineering"]
+      "keywords": [
+        "LLM integration (OpenAI APIs)",
+        "multiagent orchestration",
+        "tool use",
+        "prompt engineering"
+      ]
     },
     {
       "name": "AI Evaluation",
-      "keywords": ["MLflow evaluation pipelines", "LLM-as-a-judge", "automated response validation"]
+      "keywords": [
+        "MLflow evaluation pipelines",
+        "LLM based evaluation",
+        "automated response validation"
+      ]
     },
     {
       "name": "Data & Integrations",
-      "keywords": ["SQL Server", "structured data pipelines", "inter-service API integration", "data integrity enforcement", "time-series data handling"]
+      "keywords": [
+        "SQL Server",
+        "data pipelines",
+        "API integration",
+        "data integrity",
+        "time series data"
+      ]
     },
     {
       "name": "Infrastructure & Tools",
-      "keywords": ["Docker", "GitHub Actions (CI/CD)", "Linux", "SSH", "Git", "remote server debugging", "Azure (cloud deployment)"]
+      "keywords": ["Docker", "GitHub Actions", "Linux", "SSH", "Git", "remote debugging", "Azure"]
     }
   ],
   "work": [
     {
       "name": "Backend & AI Engineer",
       "company": "IBICARE",
-      "summary": "Built and owned production backend services using Python and FastAPI, connecting LLM agents with live biometric data and product APIs for a multi-role digital health platform serving 400+ users. Developed multi-agent orchestration systems and MLflow-based LLM evaluation pipelines.",
+      "summary": "Built and owned production backend services with Python and FastAPI, connecting LLM agents to live biometric data and product APIs for a digital health platform serving 400+ users. Developed multiagent orchestration systems and MLflow evaluation pipelines to validate AI responses.",
       "website": "https://ibicare.com",
       "startDate": "2025-09",
       "endDate": "Present",
@@ -78,15 +102,22 @@
         "JWT",
         "RBAC",
         "GitHub Actions",
-        "OPEN AI API",
+        "OpenAI API",
         "SQL Server"
       ]
     }
   ],
   "projects": [
     {
-      "name": "AI-Powered Interactive Portfolio",
-      "description": "AI-powered interactive portfolio with a retro-terminal interface and an integrated LLM assistant (WALTER_AI) capable of navigating the site and retrieving structured data. Features real-time interaction, GPU-optimized visual effects, and ultra-low CPU usage. Built with Angular 21, Tailwind CSS, and FastAPI.",
+      "name": "AI Powered Interactive Portfolio",
+      "description": "Interactive portfolio with a retro terminal UI and an integrated LLM assistant (WALTER_AI) that navigates the site and retrieves structured data. Features GPU accelerated visual effects with minimal CPU usage. Built with Angular 21, Tailwind CSS, and FastAPI.",
+      "image": "projects/portfolio/portfolio-image1.png",
+      "images": [
+        "projects/portfolio/portfolio-image1.png",
+        "projects/portfolio/portfolio-image2.png",
+        "projects/portfolio/portfolio-image3.png",
+        "projects/portfolio/portfolio-image4.png"
+      ],
       "website": "https://github.com/amnotwallas/Portfolio",
       "startDate": "2026-04",
       "highlights": [
@@ -94,12 +125,14 @@
         "TailwindCSS",
         "Vercel Serverless Functions",
         "LLM (Groq)",
-        "GPU-Acceleration"
+        "GPU Acceleration"
       ]
     },
     {
       "name": "WALTER_AI Neural Core",
-      "description": "Production-grade Multi-Agent orchestration engine for AI-powered interactions. Features a Master Orchestrator that dynamically executes tools (Function Calling) to retrieve structured portfolio data, with real-time SSE streaming and execution logs under a Clean Architecture. Built with FastAPI & Llama 3.1.",
+      "description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs. Follows clean architecture principles. Built with FastAPI and Llama 3.1.",
+      "image": "projects/Walter_AI/WalterAI.gif",
+      "images": [],
       "website": "https://github.com/amnotwallas/walter-ai-neural-core",
       "startDate": "2026-04",
       "highlights": [
@@ -114,6 +147,6 @@
   ],
   "languages": [
     { "language": "Spanish", "fluency": "Native" },
-    { "language": "English", "fluency": "Upper-intermediate (B2)" }
+    { "language": "English", "fluency": "Upper intermediate (B2)" }
   ]
 }
