@@ -7,21 +7,21 @@ from app.core.security import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-# Inicializar sistema de logs
+# Initialize logging system
 ServerLogger.setup()
 settings = get_settings()
 
 app = FastAPI(
     title="WALTER_AI_API",
-    description="Backend de IA para el portafolio de Walter Ambriz",
+    description="AI Backend for Walter Ambriz's Portfolio",
     version=settings.APP_VERSION
 )
 
-# Configurar Rate Limiting
+# Configure Rate Limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS optimizado
+# Optimized CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -33,11 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
-app.include_router(chat.router, prefix="/api/v1", tags=["IA"])
+# Routes registration
+app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
 
 @app.get("/")
 async def root():
+    """Root endpoint to check system status."""
     return {
         "message": "WALTER_AI_NEURAL_CORE_ONLINE",
         "documentation": "/docs",
@@ -46,6 +47,7 @@ async def root():
 
 @app.get("/health")
 async def health():
+    """Health check endpoint for monitoring."""
     return {
         "status": "operational",
         "version": settings.APP_VERSION,

@@ -2,8 +2,12 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
+    """
+    Application settings and environment configuration.
+    Uses Pydantic BaseSettings to automatically load variables from .env file.
+    """
     GROQ_API_KEY: str
-    API_KEY: str  # El token secreto para blindar tu API
+    API_KEY: str  # Secret token to secure the API access
     MODEL_NAME: str = "llama-3.1-8b-instant"
     APP_VERSION: str = "1.0.4"
     
@@ -12,4 +16,8 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings():
+    """
+    Returns a cached instance of the settings.
+    LRU Cache ensures the settings are only loaded once.
+    """
     return Settings()

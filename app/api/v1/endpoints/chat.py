@@ -14,6 +14,9 @@ async def chat(
     request: Request,
     agent: AgentService = Depends()
 ):
+    """
+    Standard chat endpoint. Returns the full response at once.
+    """
     response = agent.get_response(request_data.query, request_data.history)
     return ChatResponse(response=response)
 
@@ -24,6 +27,9 @@ async def chat_stream(
     request: Request,
     agent: AgentService = Depends()
 ):
+    """
+    Streaming chat endpoint. Returns a Server-Sent Events (SSE) stream.
+    """
     return StreamingResponse(
         agent.get_streaming_response(
             request_data.query, 

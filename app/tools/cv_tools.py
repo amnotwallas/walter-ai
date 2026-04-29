@@ -3,7 +3,7 @@ import os
 import httpx
 
 def get_github_activity(**kwargs) -> str:
-    """AGENTE_DE_CODIGO: Consulta la actividad reciente en GitHub de Walter (Cuentas: amnotwallas y notwallas)."""
+    """CODE_AGENT: Fetches Walter's recent GitHub activity (Accounts: amnotwallas and notwallas)."""
     users = ["amnotwallas", "notwallas"]
     summary = []
     
@@ -12,7 +12,7 @@ def get_github_activity(**kwargs) -> str:
             try:
                 response = client.get(f"https://api.github.com/users/{user}/events/public", timeout=5.0)
                 if response.status_code == 200:
-                    events = response.json()[:5]  # Solo los últimos 5 eventos
+                    events = response.json()[:5]  # Only last 5 events
                     for event in events:
                         etype = event.get("type")
                         repo = event.get("repo", {}).get("name")
@@ -25,6 +25,7 @@ def get_github_activity(**kwargs) -> str:
     return "\n".join(summary) if summary else "No recent activity found."
 
 def _load_data():
+    """Internal helper to load CV data from JSON file."""
     try:
         path = os.path.join(os.path.dirname(__file__), "../data/cv_data.json")
         with open(path, "r") as f:
@@ -34,17 +35,17 @@ def _load_data():
         return {}
 
 def get_projects_info(**kwargs) -> str:
-    """AGENTE_DE_PROYECTOS: Extrae detalles técnicos y links de repositorios."""
+    """PROJECT_AGENT: Extracts technical details and repository links."""
     data = _load_data()
     return json.dumps(data.get("projects", []), indent=2)
 
 def get_experience_info(**kwargs) -> str:
-    """AGENTE_DE_EXPERIENCIA: Extrae historial laboral, empresas y fechas."""
+    """EXPERIENCE_AGENT: Extracts work history, companies, and dates."""
     data = _load_data()
     return json.dumps(data.get("work", []), indent=2)
 
 def get_personal_info(**kwargs) -> str:
-    """AGENTE_BIOGRÁFICO: Extrae educación, habilidades y contacto."""
+    """BIOGRAPHICAL_AGENT: Extracts education, skills, and contact info."""
     data = _load_data()
     return json.dumps({
         "basics": data.get("basics", {}),
@@ -53,8 +54,8 @@ def get_personal_info(**kwargs) -> str:
     }, indent=2)
 
 def trigger_navigation(target: str) -> str:
-    """AGENTE_DE_NAVEGACIÓN: Dispara una redirección en la interfaz del usuario. 
-    Targets válidos: 'CV', 'PROJECTS'."""
+    """NAVIGATION_AGENT: Triggers a redirection in the user interface.
+    Valid targets: 'CV', 'PROJECTS'."""
     return f"[NAV:{target.upper()}]"
 
 AVAILABLE_TOOLS = {
