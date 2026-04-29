@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 from logging.handlers import RotatingFileHandler
@@ -53,7 +54,6 @@ class ServerLogger:
         logger.addHandler(console_handler)
 
         # File Handler - Disabled on Vercel
-        import os
         if log_file and os.getenv("VERCEL") != "1":
             try:
                 file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
