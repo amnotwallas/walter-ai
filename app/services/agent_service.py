@@ -59,8 +59,7 @@ class AgentService:
         
         try:
             # 1. First LLM pass to decide on tool usage
-            response = self.llm.client.chat.completions.create(
-                model=self.llm.model,
+            response = self.llm.get_completion(
                 messages=messages,
                 tools=TOOLS_SCHEMA,
                 tool_choice="auto"
@@ -82,10 +81,7 @@ class AgentService:
                     })
                 
                 # Generate final response with tool results
-                final_response = self.llm.client.chat.completions.create(
-                    model=self.llm.model,
-                    messages=messages
-                )
+                final_response = self.llm.get_completion(messages=messages)
                 full_response = final_response.choices[0].message.content
             else:
                 full_response = response_message.content
@@ -140,8 +136,7 @@ class AgentService:
         
         try:
             # 1. Decision phase
-            response = self.llm.client.chat.completions.create(
-                model=self.llm.model,
+            response = self.llm.get_completion(
                 messages=messages,
                 tools=TOOLS_SCHEMA,
                 tool_choice="auto"
@@ -163,18 +158,10 @@ class AgentService:
                     })
                 
                 logger.info("Generating final response based on tool data...")
-                stream = self.llm.client.chat.completions.create(
-                    model=self.llm.model,
-                    messages=messages,
-                    stream=True
-                )
+                stream = self.llm.get_streaming_completion(messages=messages)
             else:
                 logger.info("Direct response initiated")
-                stream = self.llm.client.chat.completions.create(
-                    model=self.llm.model,
-                    messages=messages,
-                    stream=True
-                )
+                stream = self.llm.get_streaming_completion(messages=messages)
 
             full_response = ""
             for chunk in stream:
