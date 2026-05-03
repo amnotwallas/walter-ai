@@ -29,7 +29,7 @@ async def get_github_activity(**kwargs) -> str:
 def _load_data_sync():
     """Internal helper to load CV data from JSON file (cached)."""
     try:
-        path = os.path.join(os.path.dirname(__file__), "../data/cv_data.json")
+        path = os.path.join(os.path.dirname(__file__), "../data/data.json")
         with open(path, "r") as f:
             return json.load(f)
     except Exception as e:

@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+import time
+import uuid
+import logging
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import chat
+from app.api.v1.endpoints import chat, portfolio, projects
 from app.core.config import get_settings
 from app.core.logger import ServerLogger
 from app.core.security import limiter
@@ -21,6 +24,26 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Middleware to log requests, measure time and inject Trace ID."""
+    trace_id = str(uuid.uuid4())
+    start_time = time.time()
+    
+    # Process request
+    response = await call_next(request)
+    
+    process_time = (time.time() - start_time) * 1000
+    
+    # Standard log with trace_id in extra
+    logging.info(
+        f"{request.method} {request.url.path} | Status: {response.status_code} | Time: {process_time:.2f}ms",
+        extra={"trace_id": trace_id}
+    )
+    
+    response.headers["X-Trace-ID"] = trace_id
+    return response
+
 # Optimized CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +58,8 @@ app.add_middleware(
 
 # Routes registration
 app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
+app.include_router(portfolio.router, prefix="/api/v1", tags=["Data"])
+app.include_router(projects.router, prefix="/api/v1/assets", tags=["Assets"])
 
 @app.get("/")
 async def root():

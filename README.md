@@ -81,7 +81,8 @@ graph LR
   - `get_personal_info`: Core skills, education, and contact metadata.
   - `trigger_navigation`: Direct UI control for seamless portfolio exploration.
 - **Hybrid Streaming:** SSE (Server-Sent Events) for fluid, word-by-word responses.
-- **Context-Aware Memory:** In-memory session management for coherent multi-turn dialogues.
+- **Secure Data Serving:** Dedicated endpoints for structured portfolio data and project assets.
+- **Advanced Observability:** Structured JSON logging, real-time request tracking, and Trace ID correlation.
 
 ## 🛡️ Trust & Safety (Guardrails)
 
@@ -89,7 +90,7 @@ The system integrates multi-layered security directly into the `SYSTEM_PROMPT` t
 
 - **Prompt Protection:** Shielded against injection attacks and instruction extraction attempts.
 - **Topic Limitation:** Strictly focused on Walter Ambriz's career, tech stack, and projects.
-- **Hallucination Prevention:** Relies exclusively on verified data from `cv_data.json`.
+- **Hallucination Prevention:** Relies exclusively on verified data from `data.json`.
 - **Quality Assessment:** Responses are processed by an independent `QualityGuard` service that scores conciseness, tone, and identity.
 
 ---
@@ -98,12 +99,26 @@ The system integrates multi-layered security directly into the `SYSTEM_PROMPT` t
 
 ### Quick Start (cURL)
 
+**Chat Endpoint:**
 ```bash
 curl -X POST "http://localhost:8000/api/v1/chat" \
      -H "X-API-KEY: your_key" \
      -H "Content-Type: application/json" \
      -d '{"query": "Tell me about Walter experience", "session_id": "test_123"}'
 ```
+
+**Secure CV Data:**
+```bash
+curl -H "X-API-KEY: your_key" "http://localhost:8000/api/v1/data"
+```
+
+**Secure Project Assets:**
+```bash
+curl -H "X-API-KEY: your_key" "http://localhost:8000/api/v1/assets/portfolio/image.png"
+```
+
+### Observability & Debugging
+Every response includes an `X-Trace-ID` header. Use this ID to correlate logs in `server.log` (JSON) or the console (Colored).
 
 ### Setup
 

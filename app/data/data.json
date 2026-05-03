@@ -1,0 +1,150 @@
+{
+  "system": {
+    "id": "WALTER_CORE",
+    "version": "2.1.0",
+    "status": "OPERATIONAL",
+    "location": {
+      "city": "MX",
+      "coords": "19.4326° N, 99.1332° W",
+      "timezone": "UTC-6"
+    },
+    "uptime_start": "2026-04-27T00:00:00Z"
+  },
+  "terminal": {
+    "welcome_message": "[WALTER_AI]: SYSTEM_READY. TRY_COMMANDS: 'EXPERIENCE' OR 'VIEW_PROJECTS'_",
+    "command_suggestions": ["EXPERIENCE", "VIEW_PROJECTS", "SYSTEM_STATUS", "CONTACT"],
+    "boot_sequence": [
+      "INITIALIZING_MODULES...",
+      "CONNECTING_TO_LLM_GATEWAY... [OK]",
+      "DATA_STREAM_STABLE"
+    ]
+  },
+  "basics": {
+    "name": "Walter Jahir Ambriz Reyna",
+    "label": "Backend & AI Engineer",
+    "system_label": "NEURAL_ARCHITECT",
+    "summary": "Backend & AI Engineer, Mexico. I build production systems with LLMs using Python and FastAPI. I love creating agents, connecting models to real data, and solving hard problems with AI. Passionate about learning and shipping things that work.",
+    "email": "walterardev@gmail.com",
+    "website": "walterambriz.dev",
+    "url": "https://github.com/amnotwallas",
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "username": "walterambriz",
+        "url": "https://www.linkedin.com/in/walterambriz/"
+      },
+      {
+        "network": "GitHub",
+        "username": "amnotwallas",
+        "url": "https://github.com/amnotwallas"
+      }
+    ]
+  },
+  "skills": [
+    {
+      "category": "Programming",
+      "items": ["Python (primary)", "SQL", "JavaScript", "TypeScript"]
+    },
+    {
+      "category": "Backend Development",
+      "items": ["FastAPI", "REST APIs", "Microservices", "Service Layer Architecture", "Request Validation", "JWT", "RBAC", "Server Sent Events"]
+    },
+    {
+      "category": "AI & LLM Systems",
+      "items": ["LLM Integration (OpenAI APIs)", "Multiagent Orchestration", "Tool Use", "Prompt Engineering"]
+    },
+    {
+      "category": "AI Evaluation",
+      "items": ["MLflow Evaluation Pipelines", "LLM-based Evaluation", "Automated Response Validation"]
+    },
+    {
+      "category": "Data & Integrations",
+      "items": ["SQL Server", "Data Pipelines", "API Integration", "Data Integrity", "Time Series Data"]
+    },
+    {
+      "category": "Infrastructure & Tools",
+      "items": ["Docker", "GitHub Actions", "Linux", "SSH", "Git", "Remote Debugging", "Azure"]
+    }
+  ],
+  "work": [
+    {
+      "company": "IBICARE",
+      "role": "Backend & AI Engineer",
+      "period": "2025-09 — Present",
+      "summary": "Built and owned production backend services with Python and FastAPI, connecting LLM agents to live biometric data and product APIs for a digital health platform serving 400+ users. Developed multiagent orchestration systems and MLflow evaluation pipelines to validate AI responses.",
+      "image": "https://play-lh.googleusercontent.com/qRNTf7VjO6Lhc4Zo5APR5MYfyHFgdxDhWVDI0dTNeCYPEZgUi-CvQQtgP87tHvjimDU",
+      "highlights": ["Python", "FastAPI", "LLM Agents", "MLflow", "SQL Server"]
+    },
+    {
+      "company": "Tecnm Campus Apatzingán",
+      "role": "Software Development Intern",
+      "period": "2025-02 — 2025-08",
+      "summary": "I designed and implemented a comprehensive automation system for managing professional residencies. Using JavaScript and Google Apps Script, I optimized communication between the institution, students, and program directors. The solution automated the sending of dynamic status updates from Google Sheets, significantly reducing response times and eliminating human error in critical administrative processes.",
+      "image": "https://apatzingan.tecnm.mx/wp-content/uploads/2022/04/TecNM-Vertical-451x372.png",
+      "highlights": ["JavaScript", "Google Sheets", "Automation", "Email Sending", "Data Visualization", "Google Apps Script"]
+    }
+  ],
+  "projects": [
+    {
+      "id": "portfolio",
+      "slug": "portfolio",
+      "name": "AI-Powered Interactive Portfolio",
+      "description": "Interactive portfolio with a retro terminal UI and an integrated LLM assistant.",
+      "long_description": "Interactive portfolio with a retro terminal UI and an integrated LLM assistant (WALTER_AI) that navigates the site and retrieves structured data. Features GPU accelerated visual effects with minimal CPU usage.",
+      "image": "/assets/portfolio/portfolio-image1.png",
+      "images": [
+        "/assets/portfolio/portfolio-image1.png",
+        "/assets/portfolio/portfolio-image2.png",
+        "/assets/portfolio/portfolio-image3.png",
+        "/assets/portfolio/portfolio-image4.png"
+      ],
+      "stack": ["Angular 21", "Tailwind CSS", "FastAPI", "Groq"],
+      "period": "2026-04",
+      "links": {
+        "github": "https://github.com/amnotwallas/Portfolio",
+        "demo": "https://walterambriz.dev"
+      },
+      "metadata": {
+        "status": "COMPLETED",
+        "role": "FULLSTACK DEVELOPER",
+        "complexity": "HIGH",
+        "challenges": "Implementing high-performance retro effects and LLM-to-UI communication.",
+        "solutions": "Utilized GPU-accelerated CSS and custom event-driven architecture."
+      }
+    },
+    {
+      "id": "walter-ai",
+      "slug": "walter-ai-neural-core",
+      "name": "WALTER_AI Neural Core",
+      "description": "Multiagent orchestration engine for AI powered interactions.",
+      "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
+      "image": "/assets/Walter_AI/WalterAI.gif",
+      "images": ["/assets/Walter_AI/WalterAI.gif"],
+
+      "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
+      "period": "2026-04",
+      "links": {
+        "github": "https://github.com/amnotwallas/walter-ai-neural-core",
+        "demo": null
+      },
+      "metadata": {
+        "status": "IN PRODUCTION",
+        "role": "BACKEND & AI ENGINEER",
+        "complexity": "VERY HIGH",
+        "challenges": "Managing state across specialized agents and ensuring reliable tool calls.",
+        "solutions": "Supervisor pattern and strict Pydantic validation."
+      }
+    }
+  ],
+  "education": [
+    {
+      "institution": "ITS Apatzingán",
+      "degree": "B.S. Computer Systems Engineering",
+      "period": "2021 — 2026"
+    }
+  ],
+  "languages": [
+    { "name": "Spanish", "level": "Native" },
+    { "name": "English", "level": "Upper intermediate (B2)" }
+  ]
+}

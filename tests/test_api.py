@@ -87,3 +87,14 @@ def test_rate_limiting():
     # Si el limitador está funcionando en el entorno de test:
     if response.status_code == 429:
         assert "Rate limit exceeded" in response.text
+
+def test_project_image_secure():
+    """Verifica que las imágenes de proyectos requieran auth y se sirvan correctamente."""
+    # Sin auth -> 403
+    resp_no_auth = client.get("/api/v1/assets/portfolio/portfolio-image1.png")
+    assert resp_no_auth.status_code == 403
+    
+    # Con auth -> 200
+    resp_auth = client.get("/api/v1/assets/portfolio/portfolio-image1.png", headers=HEADERS)
+    assert resp_auth.status_code == 200
+    assert resp_auth.headers["content-type"] == "image/png"

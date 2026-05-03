@@ -1,7 +1,24 @@
 import os
 import sys
 import logging
+import json
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
+
+class JsonFormatter(logging.Formatter):
+    """Custom formatter for structured JSON output."""
+    def format(self, record):
+        log_record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "name": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "trace_id": getattr(record, 'trace_id', 'N/A')
+        }
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
 
 class ColoredFormatter(logging.Formatter):
     """Custom formatter for colored and concise console output."""
@@ -24,7 +41,9 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        log_fmt = self.LEVEL_COLORS.get(record.levelno) + self.FORMAT + self.RESET
+        trace_id = getattr(record, 'trace_id', None)
+        trace_prefix = f"[{trace_id}] " if trace_id else ""
+        log_fmt = self.LEVEL_COLORS.get(record.levelno) + trace_prefix + self.FORMAT + self.RESET
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
@@ -56,9 +75,8 @@ class ServerLogger:
         # File Handler - Disabled on Vercel
         if log_file and os.getenv("VERCEL") != "1":
             try:
-                file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
                 file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
-                file_handler.setFormatter(file_formatter)
+                file_handler.setFormatter(JsonFormatter())
                 logger.addHandler(file_handler)
             except Exception as e:
                 # Fallback if file system is still read-only for any reason
