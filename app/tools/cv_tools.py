@@ -1,7 +1,8 @@
 import os
 import json
 import httpx
-from functools import lru_cache
+from app.core.data_loader import data_provider
+from app.tools.registry import tool_registry
 
 async def get_github_activity(**kwargs) -> str:
     """CODE_AGENT: Fetches Walter's recent GitHub activity (Accounts: amnotwallas and notwallas)."""
@@ -11,6 +12,7 @@ async def get_github_activity(**kwargs) -> str:
     async with httpx.AsyncClient() as client:
         for user in users:
             try:
+                # Use a specific headers for GitHub API to avoid rate limits if possible (optional but good practice)
                 response = await client.get(f"https://api.github.com/users/{user}/events/public", timeout=5.0)
                 if response.status_code == 200:
                     events = response.json()[:5]  # Only last 5 events
@@ -25,30 +27,19 @@ async def get_github_activity(**kwargs) -> str:
     
     return "\n".join(summary) if summary else "No recent activity found."
 
-@lru_cache()
-def _load_data_sync():
-    """Internal helper to load CV data from JSON file (cached)."""
-    try:
-        path = os.path.join(os.path.dirname(__file__), "../data/data.json")
-        with open(path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        return {}
-
 async def get_projects_info(**kwargs) -> str:
     """PROJECT_AGENT: Extracts technical details and repository links."""
-    data = _load_data_sync()
+    data = data_provider.get_data()
     return json.dumps(data.get("projects", []), indent=2)
 
 async def get_experience_info(**kwargs) -> str:
     """EXPERIENCE_AGENT: Extracts work history, companies, and dates."""
-    data = _load_data_sync()
+    data = data_provider.get_data()
     return json.dumps(data.get("work", []), indent=2)
 
 async def get_personal_info(**kwargs) -> str:
     """BIOGRAPHICAL_AGENT: Extracts education, skills, and contact info."""
-    data = _load_data_sync()
+    data = data_provider.get_data()
     return json.dumps({
         "basics": data.get("basics", {}),
         "education": data.get("education", []),
@@ -66,16 +57,9 @@ async def highlight_element(element_type: str, item_id: str) -> str:
     item_id: The project slug or company id."""
     return f"[HIGHLIGHT:{element_type.upper()}:{item_id}]"
 
-AVAILABLE_TOOLS = {
-    "get_projects_info": get_projects_info,
-    "get_experience_info": get_experience_info,
-    "get_personal_info": get_personal_info,
-    "trigger_navigation": trigger_navigation,
-    "get_github_activity": get_github_activity,
-    "highlight_element": highlight_element
-}
+# --- Tool Registration ---
 
-TOOLS_SCHEMA = [
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -84,6 +68,10 @@ TOOLS_SCHEMA = [
             "parameters": {"type": "object", "properties": {}}
         }
     },
+    get_github_activity
+)
+
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -92,6 +80,10 @@ TOOLS_SCHEMA = [
             "parameters": {"type": "object", "properties": {}}
         }
     },
+    get_projects_info
+)
+
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -100,6 +92,10 @@ TOOLS_SCHEMA = [
             "parameters": {"type": "object", "properties": {}}
         }
     },
+    get_experience_info
+)
+
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -108,6 +104,10 @@ TOOLS_SCHEMA = [
             "parameters": {"type": "object", "properties": {}}
         }
     },
+    get_personal_info
+)
+
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -126,6 +126,10 @@ TOOLS_SCHEMA = [
             }
         }
     },
+    trigger_navigation
+)
+
+tool_registry.register_tool(
     {
         "type": "function",
         "function": {
@@ -147,5 +151,6 @@ TOOLS_SCHEMA = [
                 "required": ["element_type", "item_id"]
             }
         }
-    }
-]
+    },
+    highlight_element
+)

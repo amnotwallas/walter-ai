@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Security
-from app.tools.cv_tools import _load_data_sync
+from fastapi import APIRouter, Security
+from app.core.data_loader import data_provider
 from app.core.security import validate_api_key
 
 router = APIRouter()
 
 @router.get("/data", dependencies=[Security(validate_api_key)])
 async def get_data():
-    return _load_data_sync()
+    """Returns the complete portfolio data from the centralized provider."""
+    return data_provider.get_data()

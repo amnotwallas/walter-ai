@@ -1,9 +1,12 @@
 import json
 from app.providers.llm_provider import LLMProvider
-from app.tools.cv_tools import TOOLS_SCHEMA, AVAILABLE_TOOLS
+from app.tools.registry import tool_registry
+import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT, build_secure_message
 from app.core.logger import get_logger
 from app.services.quality_service import QualityGuard
+
+from app.core.data_loader import data_provider
 
 logger = get_logger(__name__)
 
@@ -17,23 +20,19 @@ class AgentService:
 
     def __init__(self):
         self.llm = LLMProvider()
-        self._project_data = self._load_data()
 
-    def _load_data(self):
-        """Loads the full portfolio data from data.json."""
-        try:
-            with open("app/data/data.json", "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading data.json: {e}")
-            return {}
+    @property
+    def _project_data(self):
+        """Getter for portfolio data, always fresh from data_provider."""
+        return data_provider.get_data()
 
     def _get_project_context(self, slug: str) -> str:
         """Retrieves and formats context for a specific project."""
-        if not slug or not self._project_data:
+        data = self._project_data
+        if not slug or not data:
             return ""
         
-        projects = self._project_data.get("projects", [])
+        projects = data.get("projects", [])
         project = next((p for p in projects if p.get("slug") == slug), None)
         
         if not project:
@@ -79,16 +78,10 @@ class AgentService:
         function_name = tool_call.function.name
         try:
             function_args = json.loads(tool_call.function.arguments)
-            function_to_call = AVAILABLE_TOOLS[function_name]
-            
             logger.info(f"Executing Tool: {function_name} | Args: {function_args}")
             
-            # Since all tools are now async, we await them
-            if function_args:
-                result = await function_to_call(**function_args)
-            else:
-                result = await function_to_call()
-            
+            # Use ToolRegistry for execution
+            result = await tool_registry.execute(function_name, **function_args)
             return result
         except Exception as e:
             logger.error(f"Error executing tool '{function_name}': {str(e)}")
@@ -109,7 +102,7 @@ class AgentService:
             # 1. First LLM pass to decide on tool usage
             response = await self.llm.get_completion(
                 messages=messages,
-                tools=TOOLS_SCHEMA,
+                tools=tool_registry.schemas,
                 tool_choice="auto"
             )
             
@@ -187,7 +180,7 @@ class AgentService:
             # 1. Decision phase
             response = await self.llm.get_completion(
                 messages=messages,
-                tools=TOOLS_SCHEMA,
+                tools=tool_registry.schemas,
                 tool_choice="auto"
             )
             
