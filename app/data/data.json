@@ -95,8 +95,7 @@
       "images": [
         "/assets/portfolio/portfolio-image1.png",
         "/assets/portfolio/portfolio-image2.png",
-        "/assets/portfolio/portfolio-image3.png",
-        "/assets/portfolio/portfolio-image4.png"
+        "/assets/portfolio/portfolio-image3.png"
       ],
       "stack": ["Angular 21", "Tailwind CSS", "FastAPI", "Groq"],
       "period": "2026-04",
@@ -118,8 +117,8 @@
       "name": "WALTER_AI Neural Core",
       "description": "Multiagent orchestration engine for AI powered interactions.",
       "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
-      "image": "/assets/Walter_AI/WalterAI.gif",
-      "images": ["/assets/Walter_AI/WalterAI.gif"],
+      "image": "/assets/Walter_AI/WalterAI.png",
+      "images": ["/assets/Walter_AI/WalterAI.png"],
 
       "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
       "period": "2026-04",
