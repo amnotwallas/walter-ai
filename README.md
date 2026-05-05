@@ -1,85 +1,14 @@
-# 🤖 WALTER_AI_API // Neural Core
+# 🧠 WALTER_AI_NEURAL_CORE
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![LLM](https://img.shields.io/badge/LLM-Llama_3.1-orange?style=for-the-badge)](https://groq.com/)
-
-**WALTER_AI_API** is the high-performance AI core powering Walter Ambriz's interactive portfolio. It implements a Master Orchestrator with advanced tool-use capabilities to retrieve precise, secure, and context-aware data.
-
----
-
-## 🏗️ System Architecture & Flow
-
-```mermaid
-%%{init: {
-  'theme': 'base',
-  'themeVariables': {
-    'primaryColor': '#1a1a1a',
-    'primaryTextColor': '#c9d1d9',
-    'primaryBorderColor': '#30363d',
-    'lineColor': '#444c56',
-    'secondaryColor': '#0d1117',
-    'tertiaryColor': '#161b22',
-    'mainBkg': '#0d1117',
-    'nodeBorder': '#30363d',
-    'clusterBkg': '#0d1117',
-    'clusterBorder': '#30363d',
-    'fontSize': '14px'
-  }
-}}%%
-
-graph LR
-    %% Nodes
-    User([User])
-    Auth[[Security Shield]]
-    Core{{WALTER_AI Core}}
-    LLM(Llama 3.1)
-
-    subgraph Agents [Specialized Data Agents]
-        GH[GitHub]
-        PR[Projects]
-        EX[Experience]
-        BI[Bio]
-        NV[Navigation]
-    end
-
-    Out([Streaming SSE Output])
-
-    %% Flow
-    User -->|HTTPS| Auth
-    Auth -->|Validated| Core
-    Core -->|Prompt + Guardrails| LLM
-
-    LLM -->|Function Calling| Agents
-
-    GH & PR & EX & BI -->|JSON Context| LLM
-    NV -.->|UI Action| Out
-
-    LLM -->|Text Stream| Out
-
-    %% Styling
-    style User fill:#0d1117,stroke:#30363d
-    style Out fill:#0d1117,stroke:#00E5FF,stroke-width:2px,color:#00E5FF
-    style Core fill:#005571,stroke:#00E5FF,stroke-width:2px,color:#fff
-    style LLM fill:#161b22,stroke:#30363d
-    style Auth fill:#161b22,stroke:#30363d
-
-    classDef agentNode fill:#161b22,stroke:#30363d,color:#c9d1d9
-    class GH,PR,EX,BI,NV agentNode
-    style NV stroke:#f85149,color:#f85149
-```
-
----
+Backend engine for Walter Ambriz's interactive portfolio. Built with FastAPI and LLM orchestration.
 
 ## 🚀 Key Features
 
-- **Multi-Agent Orchestration:** Router-Worker pattern to delegate tasks to specialized data agents.
-- **Dynamic Tool-Use:** Real-time function execution across 5 specialized agents:
-  - `get_github_activity`: Real-time coding streaks and repository events.
-  - `get_projects_info`: Detailed technical stacks and project documentation.
-  - `get_experience_info`: Professional career path and work history.
-  - `get_personal_info`: Core skills, education, and contact metadata.
-  - `trigger_navigation`: Direct UI control for seamless portfolio exploration.
+- **LLM Orchestration:** Powered by Groq (Llama 3.1) for high-speed, intelligent interactions.
+- **Dynamic Tool Use:** The agent can interact with the portfolio data and trigger UI changes via specialized tools.
+- **Centralized Data:** Single source of truth in `data.json` with Pydantic validation.
+- **Trace ID Injection:** Every request is tagged with a unique Trace ID for full observability across logs and response headers.
+- **Session Persistence:** Optimized memory management that maintains context for the last 6 messages.
 - **Hybrid Streaming:** SSE (Server-Sent Events) for fluid, word-by-word responses.
 - **Secure Data Serving:** Dedicated endpoints for structured portfolio data and project assets.
 - **Advanced Observability:** Structured JSON logging, real-time request tracking, and Trace ID correlation.
@@ -91,7 +20,6 @@ The system integrates multi-layered security directly into the `SYSTEM_PROMPT` t
 - **Prompt Protection:** Shielded against injection attacks and instruction extraction attempts.
 - **Topic Limitation:** Strictly focused on Walter Ambriz's career, tech stack, and projects.
 - **Hallucination Prevention:** Relies exclusively on verified data from `data.json`.
-- **Quality Assessment:** Responses are processed by an independent `QualityGuard` service that scores conciseness, tone, and identity.
 
 ---
 
@@ -109,41 +37,37 @@ curl -X POST "http://localhost:8000/api/v1/chat" \
 
 **Secure CV Data:**
 ```bash
-curl -H "X-API-KEY: your_key" "http://localhost:8000/api/v1/data"
+curl -H "X-API-KEY: your_key" http://localhost:8000/api/v1/data
 ```
 
-**Secure Project Assets:**
-```bash
-curl -H "X-API-KEY: your_key" "http://localhost:8000/api/v1/assets/portfolio/image.png"
-```
+### Setup & Commands
 
-### Observability & Debugging
-Every response includes an `X-Trace-ID` header. Use this ID to correlate logs in `server.log` (JSON) or the console (Colored).
+Manage the project using the provided `Makefile`:
 
-### Setup
-
-1. **Configuration:** `cp .env.example .env` and add your API keys.
-2. **Installation:** `make install`
-3. **Execution:** `make dev`
-4. **Testing:** `make test`
+- **`make install`**: Set up the environment and dependencies.
+- **`make dev`**: Run the server with hot-reload for development.
+- **`make test`**: Execute the test suite.
+- **`make clean`**: Wipe cache and virtual environment.
 
 ---
 
-## 📂 Project Structure
+## 🏗️ Technical Architecture
 
-```text
-.
-├── app/
-│   ├── api/v1/         # Endpoints and versioning
-│   ├── core/           # Security, Prompts, and Config
-│   ├── models/         # Pydantic Schemas
-│   ├── services/       # Orchestration & Quality Logic
-│   ├── tools/          # Specialized Data Agents
-│   └── providers/      # LLM Gateways
-├── tests/              # Pytest Suite
-└── prompt.md           # Visual Identity Guide (AI Prompts)
-```
+### Tech Stack
+- **Framework:** FastAPI
+- **LLM Provider:** Groq SDK (Llama 3.1 8B/70B)
+- **Validation:** Pydantic v2
+- **Logging:** Structured JSON + Console Colors
+- **Rate Limiting:** SlowAPI (Fixed Window)
+
+### Modules
+- `app/api`: API routes and security.
+- `app/services`: Orchestration and intelligence.
+- `app/core`: Configuration, logging, and data loading.
+- `app/tools`: Executable functions for the AI.
+- `app/models`: Data schemas and validation.
 
 ---
 
-_Architected for high-performance AI integration // Walter Ambriz_
+## 📝 License
+Proprietary. Developed by Walter Ambriz.

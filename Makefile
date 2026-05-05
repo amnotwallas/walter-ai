@@ -26,7 +26,7 @@ install: $(VENV)
 
 dev:
 	@echo "🚀 Starting FastAPI server on http://localhost:8000"
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && $(UVICORN) main:app --reload
+	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && $(UVICORN) main:app --reload --reload-dir app --reload-include main.py
 
 test:
 	@echo "🧪 Running unit tests..."

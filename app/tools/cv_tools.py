@@ -6,22 +6,24 @@ from app.tools.registry import tool_registry
 
 async def get_projects_info(**kwargs) -> str:
     """PROJECT_AGENT: Extracts technical details and repository links."""
-    data = data_provider.get_data()
-    return json.dumps(data.get("projects", []), indent=2)
+    return data_provider.get_section("projects")
 
 async def get_experience_info(**kwargs) -> str:
     """EXPERIENCE_AGENT: Extracts work history, companies, and dates."""
-    data = data_provider.get_data()
-    return json.dumps(data.get("work", []), indent=2)
+    return data_provider.get_section("work")
 
 async def get_personal_info(**kwargs) -> str:
     """BIOGRAPHICAL_AGENT: Extracts education, skills, and contact info."""
     data = data_provider.get_data()
-    return json.dumps({
-        "basics": data.get("basics", {}),
-        "education": data.get("education", []),
-        "skills": data.get("skills", [])
-    }, indent=2)
+    if not data:
+        return json.dumps({})
+        
+    personal_data = {
+        "basics": data.basics.model_dump(),
+        "education": [e.model_dump() for e in data.education],
+        "skills": [s.model_dump() for s in data.skills]
+    }
+    return json.dumps(personal_data, indent=2)
 
 async def trigger_navigation(target: str) -> str:
     """NAVIGATION_AGENT: Triggers a redirection in the user interface.

@@ -4,7 +4,6 @@ from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT, build_secure_message
 from app.core.logger import get_logger
-from app.services.quality_service import QualityGuard
 
 from app.core.data_loader import data_provider
 
@@ -32,17 +31,17 @@ class AgentService:
         if not slug or not data:
             return ""
         
-        projects = data.get("projects", [])
-        project = next((p for p in projects if p.get("slug") == slug), None)
+        projects = data.projects
+        project = next((p for p in projects if p.slug == slug), None)
         
         if not project:
             return ""
         
         context = (
-            f"User is currently viewing project: {project.get('name')}\n"
-            f"Description: {project.get('long_description', project.get('description'))}\n"
-            f"Stack: {', '.join(project.get('stack', []))}\n"
-            f"Status: {project.get('metadata', {}).get('status', 'N/A')}\n"
+            f"User is currently viewing project: {project.name}\n"
+            f"Description: {project.long_description or project.description}\n"
+            f"Stack: {', '.join(project.stack)}\n"
+            f"Status: {project.metadata.status}\n"
             "If user uses 'this', 'here', 'this project' or similar, refer to these details."
         )
         return context
@@ -87,22 +86,35 @@ class AgentService:
             logger.error(f"Error executing tool '{function_name}': {str(e)}")
             return f"Error: The action '{function_name}' could not be completed correctly."
 
-    async def get_response(self, user_query: str, history: list = [], session_id: str = None, context = None) -> str:
+    def _prepare_conversation(self, user_query: str, history: list, session_id: str, context: any):
         """
-        Asynchronous method to get a full response from the agent.
+        Unified logic to prepare the message history and context for the LLM.
         """
         saved_history = self._get_session_history(session_id)
         current_history = saved_history if session_id and not history else history
         
+        # Log first message in session for tracking
+        if not current_history:
+            logger.info(f"FIRST_MESSAGE_RECEIVED: Session ID: {session_id or 'Anonymous'} | Query: {user_query}")
+        
+        logger.info(f"New Query: {user_query} | Session: {session_id or 'Anonymous'}")
+
         context_info = self._get_navigation_context(context)
         secure_content = build_secure_message(user_query, context_info)
         
-        # Inject SYSTEM_PROMPT as a dedicated system message for efficiency
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             *current_history, 
             {"role": "user", "content": secure_content}
         ]
+        
+        return messages, current_history
+
+    async def get_response(self, user_query: str, history: list = [], session_id: str = None, context = None) -> str:
+        """
+        Asynchronous method to get a full response from the agent.
+        """
+        messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
         
         try:
             # 1. First LLM pass to decide on tool usage
@@ -133,9 +145,6 @@ class AgentService:
             else:
                 full_response = response_message.content
 
-            # Quality assessment
-            QualityGuard.evaluate(user_query, full_response)
-
             # Persist in memory
             if session_id:
                 formatted_history = self._format_history(current_history)
@@ -149,11 +158,13 @@ class AgentService:
             return f"ERROR_SYSTEM_FAILURE: {str(e)}"
 
     def _format_history(self, history: list) -> list:
-        """Normalizes history entries to dictionary format."""
+        """Normalizes history entries to dictionary format using Pydantic v2 standards."""
         formatted = []
         for m in history:
-            if hasattr(m, "dict"): formatted.append(m.dict())
-            elif isinstance(m, dict): formatted.append(m)
+            if hasattr(m, "model_dump"):
+                formatted.append(m.model_dump())
+            elif isinstance(m, dict):
+                formatted.append(m)
         return formatted
 
     async def get_streaming_response(self, user_query: str, history: list = [], session_id: str = None, action: str = "chat", context = None):
@@ -170,23 +181,7 @@ class AgentService:
             yield "data: [SYSTEM_READY]: WALTER_AI_CORE_ESTABLISHED. How can I help you today?\n\n"
             return
 
-        saved_history = self._get_session_history(session_id)
-        current_history = saved_history if session_id and not history else history
-        
-        if not current_history:
-            logger.info(f"FIRST_MESSAGE_RECEIVED: Session ID: {session_id or 'Anonymous'} | Query: {user_query}")
-
-        context_info = self._get_navigation_context(context)
-        secure_content = build_secure_message(user_query, context_info)
-        
-        # Inject SYSTEM_PROMPT as a dedicated system message for efficiency
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            *current_history, 
-            {"role": "user", "content": secure_content}
-        ]
-        
-        logger.info(f"New Query: {user_query} | Session: {session_id or 'Anonymous'}")
+        messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
         
         try:
             # 1. First Pass (Streaming Decision)
@@ -258,9 +253,6 @@ class AgentService:
                         full_response += content
                         yield f"data: {content}\n\n"
             
-            # Final quality assessment
-            QualityGuard.evaluate(user_query, full_response)
-
             # Persist session
             if session_id:
                 formatted_history = self._format_history(current_history)

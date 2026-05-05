@@ -61,20 +61,6 @@ def test_chat_init_action():
     assert response.status_code == 200
     assert "WALTER_AI_CORE_ESTABLISHED" in response.text
 
-def test_quality_guard_logic():
-    """Prueba la lógica interna del QualityGuard."""
-    from app.services.quality_service import QualityGuard
-    
-    # Caso 1: Respuesta genérica
-    bad_response = "Claro que sí, como modelo de lenguaje estoy aquí para ayudarte."
-    result = QualityGuard.evaluate("Hola", bad_response)
-    assert result["score"] < 80
-    
-    # Caso 2: Respuesta correcta (WALTER_AI style)
-    good_response = "WALTER_AI: SISTEMA_OPERATIVO activo. Consultando FASTAPI."
-    result = QualityGuard.evaluate("Hola", good_response)
-    assert result["score"] >= 80
-
 def test_rate_limiting():
     """Verifica que el rate limiting esté activo."""
     payload = {"query": "Rate limit test"}

@@ -30,7 +30,8 @@ class ColoredFormatter(logging.Formatter):
     BOLD_RED = "\x1b[31;1m"
     RESET = "\x1b[0m"
     
-    FORMAT = "[%(levelname)s] %(name)s: %(message)s"
+    # Static format string to avoid re-creation
+    FORMAT = "%(color)s%(trace_prefix)s[%(levelname)s] %(name)s: %(message)s%(reset)s"
 
     LEVEL_COLORS = {
         logging.DEBUG: GREY,
@@ -40,12 +41,16 @@ class ColoredFormatter(logging.Formatter):
         logging.CRITICAL: BOLD_RED
     }
 
+    def __init__(self):
+        super().__init__(self.FORMAT)
+
     def format(self, record):
+        """Optimized format that injects attributes into the record instead of creating new formatters."""
+        record.color = self.LEVEL_COLORS.get(record.levelno, self.GREY)
+        record.reset = self.RESET
         trace_id = getattr(record, 'trace_id', None)
-        trace_prefix = f"[{trace_id}] " if trace_id else ""
-        log_fmt = self.LEVEL_COLORS.get(record.levelno) + trace_prefix + self.FORMAT + self.RESET
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
+        record.trace_prefix = f"[{trace_id}] " if trace_id else ""
+        return super().format(record)
 
 class ServerLogger:
     """Global logging configuration for the server."""

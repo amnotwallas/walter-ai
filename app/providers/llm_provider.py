@@ -5,12 +5,26 @@ from typing import List, Optional, Any
 class LLMProvider:
     """
     Provider class for LLM interactions using AsyncGroq SDK.
-    Handles client initialization and asynchronous completion requests.
+    Implements Singleton pattern to reuse the client and connection pool.
     """
-    def __init__(self):
-        settings = get_settings()
-        self.client = groq.AsyncGroq(api_key=settings.GROQ_API_KEY)
-        self.model = settings.MODEL_NAME
+    _instance = None
+    _client = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(LLMProvider, cls).__new__(cls)
+            settings = get_settings()
+            cls._client = groq.AsyncGroq(api_key=settings.GROQ_API_KEY)
+            cls._model = settings.MODEL_NAME
+        return cls._instance
+
+    @property
+    def client(self) -> groq.AsyncGroq:
+        return self._client
+
+    @property
+    def model(self) -> str:
+        return self._model
 
     async def get_completion(
         self, 
