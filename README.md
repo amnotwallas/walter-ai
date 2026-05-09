@@ -1,73 +1,133 @@
-# 🧠 WALTER_AI_NEURAL_CORE
+# WALTER_AI: Neural Core Engine
 
-Backend engine for Walter Ambriz's interactive portfolio. Built with FastAPI and LLM orchestration.
-
-## 🚀 Key Features
-
-- **LLM Orchestration:** Powered by Groq (Llama 3.1) for high-speed, intelligent interactions.
-- **Dynamic Tool Use:** The agent can interact with the portfolio data and trigger UI changes via specialized tools.
-- **Centralized Data:** Single source of truth in `data.json` with Pydantic validation.
-- **Trace ID Injection:** Every request is tagged with a unique Trace ID for full observability across logs and response headers.
-- **Session Persistence:** Optimized memory management that maintains context for the last 6 messages.
-- **Hybrid Streaming:** SSE (Server-Sent Events) for fluid, word-by-word responses.
-- **Secure Data Serving:** Dedicated endpoints for structured portfolio data and project assets.
-- **Advanced Observability:** Structured JSON logging, real-time request tracking, and Trace ID correlation.
-
-## 🛡️ Trust & Safety (Guardrails)
-
-The system integrates multi-layered security directly into the `SYSTEM_PROMPT` to ensure professional behavior:
-
-- **Prompt Protection:** Shielded against injection attacks and instruction extraction attempts.
-- **Topic Limitation:** Strictly focused on Walter Ambriz's career, tech stack, and projects.
-- **Hallucination Prevention:** Relies exclusively on verified data from `data.json`.
+Documentación técnica del sistema de orquestación multiagente para la gestión de consultas de perfil profesional.
 
 ---
 
-## 🛠️ Development Workflow
+## 1. Introducción Técnica
 
-### Quick Start (cURL)
+WALTER_AI es un motor de backend desarrollado sobre el framework FastAPI, diseñado para actuar como una interfaz inteligente entre usuarios y un repositorio de datos profesionales estructurados. El sistema implementa una arquitectura de orquestación multiagente basada en el patrón ReAct (Reasoning and Acting). 
 
-**Chat Endpoint:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/chat" \
-     -H "X-API-KEY: your_key" \
-     -H "Content-Type: application/json" \
-     -d '{"query": "Tell me about Walter experience", "session_id": "test_123"}'
+> [!NOTE]  
+> Su propósito principal es la resolución de consultas complejas mediante la descomposición funcional de tareas, permitiendo que un orquestador central coordine agentes especializados en la recuperación de información y ejecución de acciones en la interfaz de usuario.
+
+## 2. Arquitectura del Sistema
+
+El flujo de ejecución se fundamenta en una segmentación clara entre la capa de transporte (FastAPI), la capa de razonamiento (Orquestador) y la capa de datos (Providers).
+
+```mermaid
+graph TD
+    A[Client / UI] -->|POST /chat/stream| B[FastAPI Router]
+    B --> C{Security Layer}
+    C -->|Valid X-API-KEY| D[AgentService Orchestrator]
+    C -->|Invalid| E[403 Forbidden]
+    
+    D --> F[Memory Provider]
+    D --> G[Context Provider / data.json]
+    
+    subgraph Execution_Loop
+        D <-->|Tools Schemas| H[LLM: Groq Llama 3.1]
+        D -->|Call| I[Tool Registry]
+        I --> J[Functional Agents / Tools]
+        J -->|Result| D
+    end
+    
+    D -->|SSE Stream| A
 ```
 
-**Secure CV Data:**
-```bash
-curl -H "X-API-KEY: your_key" http://localhost:8000/api/v1/data
+## 3. Especificación de Agentes
+
+El sistema delega la lógica de negocio en agentes funcionales que operan como herramientas (tools) dentro del registro del orquestador.
+
+| Agente | Rol Específico | Modelo (LLM) | Herramientas (Tools) |
+| :--- | :--- | :--- | :--- |
+| **Biographical Agent** | Extracción de datos personales, educación y contacto. | Llama 3.1 70B/8B | `get_personal_info` |
+| **Project Agent** | Consulta técnica y búsqueda de proyectos en el portafolio. | Llama 3.1 70B/8B | `get_projects_list`, `get_project_by_slug`, `search_projects` |
+| **Experience Agent** | Recuperación y análisis de historial laboral y roles. | Llama 3.1 70B/8B | `get_experience_info` |
+| **Navigation Agent** | Control de flujo y redirección en la interfaz de usuario. | Llama 3.1 70B/8B | `trigger_navigation` |
+| **UI Agent** | Manipulación de elementos visuales (highlighting). | Llama 3.1 70B/8B | `highlight_element` |
+
+## 4. Diagrama de Interacción
+
+La interacción entre agentes es coordinada por el `AgentService` mediante un ciclo de razonamiento iterativo.
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant O as Orquestador (AgentService)
+    participant L as LLM (Groq)
+    participant A as Agentes Funcionales (Tools)
+
+    U->>O: Consulta (ej: "Muestra detalles del proyecto X")
+    O->>O: Cargar Memoria y Contexto
+    O->>L: Query + Contexto + Definición de Tools
+    L->>O: Tool Call: get_project_by_slug(slug="X")
+    O->>A: Ejecutar Project Agent
+    A->>O: Datos estructurados del proyecto
+    O->>L: Resultado de Tool + Query Original
+    L->>O: Generar Respuesta Final + Tool Call: trigger_navigation
+    O->>A: Ejecutar Navigation Agent
+    O->>U: Stream SSE (Respuesta texto + Acción UI)
 ```
 
-### Setup & Commands
+## 5. Documentación de Endpoints
 
-Manage the project using the provided `Makefile`:
+El sistema expone una API RESTful documentada bajo el estándar OpenAPI.
 
-- **`make install`**: Set up the environment and dependencies.
-- **`make dev`**: Run the server with hot-reload for development.
-- **`make test`**: Execute the test suite.
-- **`make clean`**: Wipe cache and virtual environment.
+### Chat e Interacción
+- **`POST /api/v1/chat/stream`**
+  - **Propósito:** Inicio de conversación y streaming de respuestas.
+  - **Esquema de entrada:** `ChatRequest` (query: string, session_id: string, context: optional).
+  - **Respuesta:** `Server-Sent Events (SSE)` con fragmentos JSON.
 
----
+> [!IMPORTANT]  
+> Todas las peticiones al endpoint de chat requieren el encabezado `X-API-KEY` para validar la identidad del cliente y aplicar políticas de Rate Limiting.
 
-## 🏗️ Technical Architecture
+### Gestión de Activos
+- **`GET /api/v1/assets/{path:path}`**
+  - **Propósito:** Entrega segura de imágenes y recursos de proyectos.
+  - **Seguridad:** Requiere validación de token para acceso a recursos protegidos.
 
-### Tech Stack
-- **Framework:** FastAPI
-- **LLM Provider:** Groq SDK (Llama 3.1 8B/70B)
-- **Validation:** Pydantic v2
-- **Logging:** Structured JSON + Console Colors
-- **Rate Limiting:** SlowAPI (Fixed Window)
+## 6. Stack Tecnológico
 
-### Modules
-- `app/api`: API routes and security.
-- `app/services`: Orchestration and intelligence.
-- `app/core`: Configuration, logging, and data loading.
-- `app/tools`: Executable functions for the AI.
-- `app/models`: Data schemas and validation.
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-f55036?style=for-the-badge)
+![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
 
----
+- **Core Framework:** FastAPI 0.115.0 (Gestión de asincronía nativa).
+- **Gestión de Dependencias:** [uv](https://github.com/astral-sh/uv) (Entorno determinista de alto rendimiento).
+- **Inference Gateway:** Groq SDK para modelos Llama 3.1 (Latencia mínima).
+- **Validación de Datos:** Pydantic v2 para modelado de datos estricto.
+- **Seguridad:** SlowAPI para control de tráfico (Rate limiting).
 
-## 📝 License
-Proprietary. Developed by Walter Ambriz.
+## 7. Configuración y Despliegue
+
+### Instalación de Dependencias
+El proyecto utiliza `uv` para garantizar la reproducibilidad del entorno.
+```bash
+make install
+```
+
+### Variables de Entorno
+Es imperativo configurar el archivo `.env` con las siguientes claves:
+
+| Variable | Descripción |
+| :--- | :--- |
+| `GROQ_API_KEY` | Credencial de acceso a la API de Groq Cloud. |
+| `API_KEY` | Token secreto definido por el administrador para asegurar la API. |
+
+> [!TIP]  
+> Puede utilizar el archivo `.env.example` como plantilla para su configuración local.
+
+### Preparación para Producción (Vercel)
+Debido a que Vercel utiliza el estándar `requirements.txt`, es necesario sincronizar las dependencias antes del despliegue:
+
+```bash
+make export
+```
+
+## Licencia
+
+Software propietario desarrollado por Walter Ambriz. Todos los derechos reservados.

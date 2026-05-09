@@ -1,42 +1,31 @@
-# Variables
-PYTHON = python3
-PIP = .venv/bin/pip
-UVICORN = .venv/bin/uvicorn
-VENV = .venv
-PYTEST = .venv/bin/pytest
-
-.PHONY: help install dev clean lint test
+.PHONY: help install dev test clean sync export
 
 help:
-	@echo "🛠️ WALTER_AI API - Available commands:"
-	@echo "  make install  - Create virtual environment and install dependencies"
+	@echo "🛠️ WALTER_AI API (UV Optimized) - Available commands:"
+	@echo "  make install  - Install and sync all dependencies"
 	@echo "  make dev      - Run the development server with hot-reload"
 	@echo "  make test     - Run unit tests with pytest"
-	@echo "  make clean    - Remove virtual environment and python cache"
-	@echo "  make lint     - Run basic syntax check"
+	@echo "  make export   - Export dependencies to requirements.txt (for Vercel)"
+	@echo "  make clean    - Remove python cache and virtual environment"
 
-$(VENV):
-	$(PYTHON) -m venv $(VENV)
-	@echo "✅ Virtual environment created."
-
-install: $(VENV)
-	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
-	@echo "✅ Dependencies installed."
+install:
+	uv sync
+	@echo "✅ Project synced and dependencies installed."
 
 dev:
 	@echo "🚀 Starting FastAPI server on http://localhost:8000"
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && $(UVICORN) main:app --reload --reload-dir app --reload-include main.py
+	uv run uvicorn main:app --reload
 
 test:
 	@echo "🧪 Running unit tests..."
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && $(PYTEST) tests/
+	uv run pytest tests/
+
+export:
+	uv export --format requirements-txt > requirements.txt
+	@echo "✅ requirements.txt updated for Vercel."
 
 clean:
-	rm -rf $(VENV)
+	rm -rf .venv
 	find . -type d -name "__pycache__" -exec rm -rf {} +
+	rm -rf .pytest_cache
 	@echo "🧹 Cleaned up environment and cache."
-
-lint:
-	$(PIP) install ruff
-	.venv/bin/ruff check .
