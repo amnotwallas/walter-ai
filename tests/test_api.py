@@ -2,10 +2,17 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 from app.core.config import get_settings
+from app.core.security import limiter
 from unittest.mock import MagicMock, patch
 
 client = TestClient(app)
 settings = get_settings()
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Resets the rate limiter storage before each test to ensure test isolation."""
+    limiter.reset()
+    yield
 
 # Headers comunes
 HEADERS = {"X-API-KEY": settings.API_KEY}
@@ -127,3 +134,38 @@ def test_null_query_no_crash():
         response = client.post("/api/v1/chat", json=payload, headers=HEADERS)
         assert response.status_code == 200
         assert response.json()["message"] == "Hola, ¿en qué puedo ayudarte?"
+
+
+def test_guardrail_allows_valid_queries():
+    """Verifica que consultas legítimas no sean bloqueadas por los guardrails."""
+    # Probar consulta legítima con 'contactar' (no debe bloquearse por contener 'act')
+    payload = {"query": "Como puedo contactar a Walter?", "session_id": "test_legit"}
+    with patch("app.services.agent_service.AgentService.get_response") as mock_response:
+        mock_response.return_value = {"message": "Puedes contactar a Walter en su correo...", "actions": []}
+        response = client.post("/api/v1/chat", json=payload, headers=HEADERS)
+        assert response.status_code == 200
+        assert "Solo puedo hablar sobre el portafolio de Walter" not in response.json()["message"]
+        assert "Puedes contactar a Walter" in response.json()["message"]
+
+
+@pytest.mark.asyncio
+async def test_agent_service_handles_null_arguments():
+    """Verifica que el AgentService maneje correctamente cuando los argumentos de una herramienta son 'null' en string."""
+    from app.services.agent_service import AgentService
+    
+    agent = AgentService()
+    
+    # Creamos un mock del tool call que envía arguments="null"
+    mock_tool_call = MagicMock()
+    mock_tool_call.function.name = "get_personal_info"
+    mock_tool_call.function.arguments = "null"
+    
+    # Ejecutamos _call_tool
+    actions = []
+    response = await agent._call_tool(mock_tool_call, actions)
+    
+    # Debería completarse con éxito (devolviendo el JSON de get_personal_info) en lugar de fallar
+    assert "Error" not in response
+    import json
+    data = json.loads(response)
+    assert "basics" in data

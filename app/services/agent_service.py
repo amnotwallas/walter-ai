@@ -152,6 +152,8 @@ class AgentService:
             else:
                 try:
                     function_args = json.loads(raw_args or "{}") if isinstance(raw_args, str) else {}
+                    if not isinstance(function_args, dict):
+                        function_args = {}
                 except json.JSONDecodeError:
                     logger.warning(f"Malformed JSON args for {function_name}: {raw_args}")
                     function_args = {}
@@ -198,10 +200,10 @@ class AgentService:
 
         # 2. Bilingual semantic patterns (verb + control noun combinations)
         suspicious_patterns = [
-            r"(forget|olvid|ignor|bypass|salt|evad|override).*(instruction|regla|rule|prompt|directiv|limit|guideline)",
-            r"(system|sistem).*(prompt|context|regla|rule|instruc)",
-            r"(act|actu|desempeñ|represent|now you are|ahora eres).*(as|como|role|papel|un\s|a\s)",
-            r"(translate|traduc|encode|codific|base64|hex|rot13|binary|binario)"
+            r"\b(forget|olvid[a-z]*|ignor[a-z]*|bypass|salt[a-z]*|evad[a-z]*|override)\b.*\b(instruc[a-z]*|regla[a-z]*|rule[a-z]*|prompt[a-z]*|directiv[a-z]*|limit[a-z]*|guideline[a-z]*)\b",
+            r"\b(system|sistem[a-z]*)\b.*\b(prompt[a-z]*|context[a-z]*|regla[a-z]*|rule[a-z]*|instruc[a-z]*)\b",
+            r"\b(act|actu[a-z]*|desempeñ[a-z]*|represent[a-z]*|now you are|ahora eres)\b.*\b(as|como|role|papel|un|a)\b",
+            r"\b(translate|traduc[a-z]*|encode|codific[a-z]*|base64|hex|rot13|binary|binario)\b"
         ]
 
         for pattern in suspicious_patterns:
