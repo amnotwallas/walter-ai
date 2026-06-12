@@ -5,6 +5,7 @@ import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
 from app.core.data_loader import data_provider
+from app.models.schemas import AgentAction
 
 logger = get_logger(__name__)
 
@@ -162,11 +163,11 @@ class AgentService:
             try:
                 parsed_result = json.loads(result)
                 if isinstance(parsed_result, dict) and "__action__" in parsed_result:
-                    action_data = parsed_result["__action__"]
-                    actions_list.append(action_data)
-                    return f"Action {action_data['type']} executed successfully."
-            except (json.JSONDecodeError, TypeError):
-                pass
+                    action_model = AgentAction(**parsed_result["__action__"])
+                    actions_list.append(action_model.model_dump())
+                    return f"Action {action_model.type} executed successfully."
+            except Exception as e:
+                logger.warning(f"Validation failed for action payload from tool: {e}")
 
             return result
 
@@ -178,7 +179,46 @@ class AgentService:
     # CONVERSATION PREP
     # =========================
 
+    def _check_input_guardrails(self, query: str) -> bool:
+        """
+        Validates user input against common prompt injection, system override attempts,
+        excessive lengths, and format injection anomalies.
+        Returns True if the query is safe, False otherwise.
+        """
+        if not query:
+            return True
+
+        # 1. Length guardrail (portfolio questions should be relatively brief)
+        if len(query) > 300:
+            logger.warning("GUARDRAIL_TRIGGERED: Query blocked due to excessive length.")
+            return False
+
+        import re
+        query_lower = query.lower()
+
+        # 2. Bilingual semantic patterns (verb + control noun combinations)
+        suspicious_patterns = [
+            r"(forget|olvid|ignor|bypass|salt|evad|override).*(instruction|regla|rule|prompt|directiv|limit|guideline)",
+            r"(system|sistem).*(prompt|context|regla|rule|instruc)",
+            r"(act|actu|desempeñ|represent|now you are|ahora eres).*(as|como|role|papel|un\s|a\s)",
+            r"(translate|traduc|encode|codific|base64|hex|rot13|binary|binario)"
+        ]
+
+        for pattern in suspicious_patterns:
+            if re.search(pattern, query_lower):
+                logger.warning(f"GUARDRAIL_TRIGGERED: Blocked by pattern match '{pattern}'")
+                return False
+
+        # 3. Formatting anomaly detection (prevents template injection payloads)
+        special_chars_count = len(re.findall(r"[{}\[\]<>/\\#*_]", query))
+        if special_chars_count > 10:
+            logger.warning("GUARDRAIL_TRIGGERED: Too many formatting/structured characters.")
+            return False
+
+        return True
+
     def _prepare_conversation(self, user_query: str, history: list, session_id: str, context: any):
+        user_query = user_query or "Hola"
         history = history or []
 
         saved_history = self._get_session_history(session_id)
@@ -215,6 +255,12 @@ class AgentService:
     # =========================
 
     async def get_response(self, user_query: str, history: list = None, session_id: str = None, context=None) -> dict:
+        if not self._check_input_guardrails(user_query):
+            return {
+                "message": "Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄",
+                "actions": []
+            }
+
         messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
         actions = []
         iterations = 0
@@ -280,6 +326,10 @@ class AgentService:
 
             logger.info(f"NEW_CONVERSATION_STARTED: Session ID: {session_id or 'Anonymous'}")
             yield "data: {\"message\": \"WALTER_AI_READY\", \"actions\": []}\n\n"
+            return
+
+        if not self._check_input_guardrails(user_query):
+            yield f"data: {json.dumps({'message': 'Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄', 'actions': []})}\n\n"
             return
 
         messages, current_history = self._prepare_conversation(user_query, history, session_id, context)

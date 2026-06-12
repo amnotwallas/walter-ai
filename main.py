@@ -2,6 +2,7 @@ import time
 import uuid
 import logging
 from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import chat, portfolio, projects
 from app.core.config import get_settings
@@ -73,3 +74,11 @@ async def health():
         "version": settings.APP_VERSION,
         "environment": "production"
     }
+
+@app.get("/ui", response_class=HTMLResponse)
+async def serve_ui():
+    """Serves a premium chat frontend UI to test and interact with Walter AI."""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "app/templates/chat_ui.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()

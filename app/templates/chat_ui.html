@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WALTER_AI // NEURAL_CORE_EXPLORER</title>
+    <!-- Import Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #080914;
+            --panel-bg: rgba(13, 16, 32, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-primary: #8a2be2;
+            --accent-secondary: #00f0ff;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --bubble-user: linear-gradient(135deg, #7c3aed, #4f46e5);
+            --bubble-agent: rgba(255, 255, 255, 0.03);
+            --glow-color: rgba(138, 43, 226, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.08) 0%, transparent 40%);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Container using glassmorphism */
+        .app-container {
+            width: 90vw;
+            max-width: 1200px;
+            height: 85vh;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px var(--glow-color);
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            overflow: hidden;
+        }
+
+        /* Sidebar settings panel */
+        .sidebar {
+            background: rgba(4, 5, 12, 0.5);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .logo-section {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .logo-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--accent-secondary), var(--accent-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-status {
+            font-size: 0.65rem;
+            color: #10b981;
+            border: 1px solid #10b981;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .section-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        input, select {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent-secondary);
+            color: var(--accent-secondary);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .btn-outline:hover {
+            background: rgba(0, 240, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        /* Main Chat Area */
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(4, 5, 12, 0.2);
+        }
+
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .session-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .session-id-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Message Bubbles */
+        .message-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.agent {
+            justify-content: flex-start;
+        }
+
+        .bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user .bubble {
+            background: var(--bubble-user);
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+        }
+
+        .message-row.agent .bubble {
+            background: var(--bubble-agent);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .bubble-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            display: block;
+            text-align: right;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* Action display card */
+        .action-card {
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            background: rgba(0, 240, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent-secondary);
+            animation: glowPulse 2s infinite alternate;
+        }
+
+        @keyframes glowPulse {
+            from { box-shadow: 0 0 4px rgba(0, 240, 255, 0.1); }
+            to { box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+        }
+
+        /* Chat Input Section */
+        .chat-input-container {
+            border-top: 1px solid var(--border-color);
+            padding: 20px 24px;
+            background: rgba(4, 5, 12, 0.3);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.2);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 14px;
+        }
+
+        .input-wrapper input:focus {
+            box-shadow: none;
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 6px 10px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Markdown rendering styles */
+        .bubble code {
+            font-family: 'Share Tech Mono', monospace;
+            background: rgba(0,0,0,0.4);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #f43f5e;
+        }
+        .bubble p {
+            margin-bottom: 8px;
+        }
+        .bubble p:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-section">
+            <div class="logo-title">
+                WALTER_AI <span class="logo-status">Core</span>
+            </div>
+        </div>
+
+        <!-- Auth Config -->
+        <div>
+            <h3 class="section-title">Credenciales</h3>
+            <div class="form-group">
+                <label for="apiKey">X-API-KEY</label>
+                <input type="password" id="apiKey" placeholder="Ingresa tu API Key para autenticar" />
+            </div>
+        </div>
+
+        <!-- Simulator context -->
+        <div>
+            <h3 class="section-title">Contexto de Navegación</h3>
+            <div class="form-group">
+                <label for="currentPage">Página Actual</label>
+                <select id="currentPage">
+                    <option value="home">Home</option>
+                    <option value="projects">Projects List</option>
+                    <option value="project_details">Project Details</option>
+                    <option value="experience">Experience</option>
+                </select>
+            </div>
+            <div class="form-group" id="slugGroup" style="display: none;">
+                <label for="projectSlug">Project Slug</label>
+                <input type="text" id="projectSlug" placeholder="ej. portfolio-assistant" />
+            </div>
+        </div>
+
+        <!-- Actions history -->
+        <div style="margin-top: auto;">
+            <button class="btn btn-outline" style="width: 100%;" onclick="resetSession()">Reiniciar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Chat main window -->
+    <div class="chat-area">
+        <div class="chat-header">
+            <div style="display: flex; flex-direction: column;">
+                <h2 style="font-size: 1.1rem; font-weight: 500;">Neural Chat Simulator</h2>
+                <span style="font-size: 0.75rem; color: var(--text-muted)">Conectado al motor local de orquestación</span>
+            </div>
+            <div class="session-info">
+                <span class="session-label">Session:</span>
+                <span class="session-id-display" id="sessionIdDisplay">none</span>
+            </div>
+        </div>
+
+        <!-- Message logs -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message-row agent">
+                <div class="bubble">
+                    Hola, soy <strong>Walter AI</strong>, el asistente virtual de Walter. ¿En qué te puedo ayudar hoy? ¿Quieres ver sus proyectos o su experiencia? 😄
+                    <span class="bubble-meta">SYSTEM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing placeholder -->
+        <div id="typingIndicator" style="display: none; padding: 0 24px 10px 24px;">
+            <div class="typing-indicator">
+                <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 8px;">Pensando</span>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="chat-input-container">
+            <form id="chatForm" onsubmit="sendMessage(event)">
+                <div class="input-wrapper">
+                    <input type="text" id="userInput" placeholder="Pregúntale a Walter AI sobre Walter..." autocomplete="off" />
+                    <button type="submit" class="btn" style="border-radius: 8px;">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize session ID
+    let sessionId = localStorage.getItem('walter_session_id') || generateUUID();
+    localStorage.setItem('walter_session_id', sessionId);
+    document.getElementById('sessionIdDisplay').innerText = sessionId.substring(0, 8) + '...';
+
+    // Load API key from localstorage if exists
+    if (localStorage.getItem('walter_api_key')) {
+        document.getElementById('apiKey').value = localStorage.getItem('walter_api_key');
+    }
+
+    // Toggle Slug input depending on Page
+    document.getElementById('currentPage').addEventListener('change', function(e) {
+        const slugGroup = document.getElementById('slugGroup');
+        if (e.target.value === 'project_details') {
+            slugGroup.style.display = 'flex';
+        } else {
+            slugGroup.style.display = 'none';
+        }
+    });
+
+    // Helper functions
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function resetSession() {
+        sessionId = generateUUID();
+        localStorage.setItem('walter_session_id', sessionId);
+        document.getElementById('sessionIdDisplay').innerText = sessionId.substring(0, 8) + '...';
+        document.getElementById('chatMessages').innerHTML = `
+            <div class="message-row agent">
+                <div class="bubble">
+                    Sesión reiniciada. Hola, soy <strong>Walter AI</strong>. ¿En qué te puedo ayudar hoy? 😄
+                    <span class="bubble-meta">SYSTEM</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Convert basic markdown to clean HTML
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let html = text;
+        // Escape HTML to prevent basic XSS from testing
+        html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        // Bold formatting
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Code blocks
+        html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+        
+        // Convert newlines to breaks
+        html = html.replace(/\n/g, '<br>');
+        
+        return html;
+    }
+
+    // Streaming fetch implementation
+    async function sendMessage(event) {
+        event.preventDefault();
+        
+        const inputElement = document.getElementById('userInput');
+        const query = inputElement.value.trim();
+        if (!query) return;
+
+        // Clear input field
+        inputElement.value = '';
+
+        // Save API Key if changed
+        const apiKey = document.getElementById('apiKey').value.trim();
+        localStorage.setItem('walter_api_key', apiKey);
+
+        // Add user bubble
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML += `
+            <div class="message-row user">
+                <div class="bubble">
+                    ${formatMarkdown(query)}
+                    <span class="bubble-meta">TÚ</span>
+                </div>
+            </div>
+        `;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Show typing
+        const typingIndicator = document.getElementById('typingIndicator');
+        typingIndicator.style.display = 'block';
+
+        // Prepare context
+        const currentPage = document.getElementById('currentPage').value;
+        const projectSlug = document.getElementById('projectSlug').value.trim();
+        
+        const context = {
+            page: currentPage,
+            project_slug: currentPage === 'project_details' ? projectSlug : null,
+            url: window.location.href
+        };
+
+        const payload = {
+            query: query,
+            session_id: sessionId,
+            action: 'chat',
+            context: context
+        };
+
+        // Streaming connection using fetch POST + ReadableStream
+        try {
+            const response = await fetch('/api/v1/chat/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errJson = await response.json().catch(() => ({}));
+                const errMsg = errJson.detail || `Server responded with ${response.status}`;
+                throw new Error(errMsg);
+            }
+
+            // Create agent bubble placeholder
+            const agentRowId = 'agent_' + Date.now();
+            chatMessages.innerHTML += `
+                <div class="message-row agent" id="${agentRowId}">
+                    <div class="bubble">
+                        <span class="content-span"></span>
+                        <span class="bubble-meta">WALTER_AI</span>
+                        <div class="actions-container"></div>
+                    </div>
+                </div>
+            `;
+            
+            const agentRow = document.getElementById(agentRowId);
+            const contentSpan = agentRow.querySelector('.content-span');
+            const actionsContainer = agentRow.querySelector('.actions-container');
+            
+            typingIndicator.style.display = 'none';
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let fullTextResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                
+                // Keep the last partial line in buffer
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const cleanLine = line.trim();
+                    if (!cleanLine.startsWith('data: ')) continue;
+                    
+                    try {
+                        const jsonStr = cleanLine.substring(6);
+                        const data = JSON.parse(jsonStr);
+                        
+                        if (data.message) {
+                            fullTextResponse += data.message;
+                            contentSpan.innerHTML = formatMarkdown(fullTextResponse);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                        
+                        if (data.actions && data.actions.length > 0) {
+                            for (const act of data.actions) {
+                                let actionText = '';
+                                if (act.type === 'navigation') {
+                                    actionText = `Redirección simulada a página: <strong>${act.target}</strong>`;
+                                } else if (act.type === 'highlight') {
+                                    actionText = `Resaltado de elemento: <strong>${act.element_type}</strong> (ID: <code>${act.item_id}</code>)`;
+                                } else {
+                                    actionText = `Acción ejecutada: <strong>${act.type}</strong>`;
+                                }
+                                
+                                actionsContainer.innerHTML += `
+                                    <div class="action-card">
+                                        <span>⚙️</span> <span>${actionText}</span>
+                                    </div>
+                                `;
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore parse errors of incomplete chunks
+                    }
+                }
+            }
+        } catch (error) {
+            typingIndicator.style.display = 'none';
+            chatMessages.innerHTML += `
+                <div class="message-row agent">
+                    <div class="bubble" style="border-color: #ef4444; color: #fecaca;">
+                        <strong>Error de Conexión:</strong> ${error.message}<br>
+                        <span style="font-size: 0.8rem; opacity: 0.8;">Verifica que el X-API-KEY ingresado coincida con tu .env.</span>
+                        <span class="bubble-meta">SYSTEM_ERROR</span>
+                    </div>
+                </div>
+            `;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+</script>
+
+</body>
+</html>
