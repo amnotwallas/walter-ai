@@ -25,6 +25,68 @@ class ToolRegistry:
         self._schemas.append(schema)
         logger.info(f"Registered tool: {name}")
 
+    def tool(self, description: str, param_descriptions: Dict[str, str] = None, enums: Dict[str, List[Any]] = None):
+        """
+        Decorator to register a function as a tool for the LLM.
+        Automatically infers types, names, and requirements from the function signature.
+        """
+        import inspect
+        param_descriptions = param_descriptions or {}
+        enums = enums or {}
+
+        def decorator(func: Callable):
+            sig = inspect.signature(func)
+            properties = {}
+            required = []
+            
+            type_mapping = {
+                str: "string",
+                int: "integer",
+                float: "number",
+                bool: "boolean",
+                list: "array",
+                dict: "object"
+            }
+            
+            for param_name, param in sig.parameters.items():
+                if param.kind in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL):
+                    continue
+                
+                annotation = param.annotation
+                json_type = type_mapping.get(annotation, "string")
+                
+                prop_schema = {
+                    "type": json_type,
+                    "description": param_descriptions.get(param_name, f"The {param_name} parameter.")
+                }
+                
+                if param_name in enums:
+                    prop_schema["enum"] = enums[param_name]
+                
+                properties[param_name] = prop_schema
+                
+                if param.default == inspect.Parameter.empty:
+                    required.append(param_name)
+            
+            schema = {
+                "type": "function",
+                "function": {
+                    "name": func.__name__,
+                    "description": description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": properties,
+                    }
+                }
+            }
+            
+            if required:
+                schema["function"]["parameters"]["required"] = required
+                
+            self.register_tool(schema, func)
+            return func
+        return decorator
+
     @property
     def tools(self) -> Dict[str, Callable]:
         return self._tools

@@ -12,11 +12,8 @@ from slowapi.util import get_remote_address
 
 settings = get_settings()
 
-# Define the expected header for the API key
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
-# Initialize the rate limiter based on the client's IP address.
-# This prevents excessive resource usage from a single source.
 limiter = Limiter(key_func=get_remote_address)
 
 async def validate_api_key(api_key: str = Security(api_key_header)):
@@ -35,7 +32,6 @@ async def validate_api_key(api_key: str = Security(api_key_header)):
     if api_key == settings.API_KEY:
         return api_key
     
-    # If the key is invalid, raise a 403 Forbidden exception
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="CRITICAL_ERROR: INVALID_API_KEY. ACCESS_DENIED."

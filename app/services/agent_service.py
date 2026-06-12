@@ -146,16 +146,11 @@ class AgentService:
         try:
             raw_args = tool_call.function.arguments
             
-            # Defensive argument parsing
-            if not raw_args:
-                function_args = {}
-            elif isinstance(raw_args, dict):
+            if isinstance(raw_args, dict):
                 function_args = raw_args
             else:
                 try:
-                    function_args = json.loads(raw_args)
-                    if not isinstance(function_args, dict):
-                        function_args = {}
+                    function_args = json.loads(raw_args or "{}") if isinstance(raw_args, str) else {}
                 except json.JSONDecodeError:
                     logger.warning(f"Malformed JSON args for {function_name}: {raw_args}")
                     function_args = {}

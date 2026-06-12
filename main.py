@@ -10,7 +10,6 @@ from app.core.security import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-# Initialize logging system
 ServerLogger.setup()
 settings = get_settings()
 
@@ -20,7 +19,6 @@ app = FastAPI(
     version=settings.APP_VERSION
 )
 
-# Configure Rate Limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -35,7 +33,6 @@ async def log_requests(request: Request, call_next):
     
     process_time = (time.time() - start_time) * 1000
     
-    # Standard log with trace_id in extra
     logging.info(
         f"{request.method} {request.url.path} | Status: {response.status_code} | Time: {process_time:.2f}ms",
         extra={"trace_id": trace_id}
@@ -44,7 +41,6 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Trace-ID"] = trace_id
     return response
 
-# Optimized CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -56,7 +52,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routes registration
 app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
 app.include_router(portfolio.router, prefix="/api/v1", tags=["Data"])
 app.include_router(projects.router, prefix="/api/v1/assets", tags=["Assets"])

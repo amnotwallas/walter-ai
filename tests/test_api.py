@@ -51,7 +51,7 @@ def test_chat_stream_success():
 def test_chat_init_action():
     """Verifica que la acción 'init' devuelva el mensaje de sistema listo."""
     payload = {
-        "query": "initialize", # Enviamos query para evitar 422
+        "query": "initialize",
         "session_id": "new_session_123", 
         "action": "init"
     }
@@ -59,7 +59,7 @@ def test_chat_init_action():
     response = client.post("/api/v1/chat/stream", json=payload, headers=HEADERS)
     
     assert response.status_code == 200
-    assert "WALTER_AI_CORE_ESTABLISHED" in response.text
+    assert "WALTER_AI_READY" in response.text
 
 def test_rate_limiting():
     """Verifica que el rate limiting esté activo."""
