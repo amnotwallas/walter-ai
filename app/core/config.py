@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     GROQ_API_KEY: str
     API_KEY: str  # Secret token to secure the API access
-    MODEL_NAME: str = "llama-3.1-8b-instant"
+    MODEL_NAME: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     APP_VERSION: str = "1.0.4"
 
 @lru_cache()
