@@ -86,29 +86,26 @@
   ],
   "projects": [
     {
-      "id": "portfolio",
-      "slug": "portfolio",
-      "name": "AI-Powered Interactive Portfolio",
-      "description": "Interactive portfolio with a retro terminal UI and an integrated LLM assistant.",
-      "long_description": "Interactive portfolio with a retro terminal UI and an integrated LLM assistant (WALTER_AI) that navigates the site and retrieves structured data. Features GPU accelerated visual effects with minimal CPU usage.",
-      "image": "/assets/portfolio/portfolio-image1.png",
+      "id": "caselens",
+      "slug": "caselens",
+      "name": "CaseLens — AI Legal RAG Search",
+      "description": "Full-stack legal RAG system with double-layer guardrails, SSE streaming, and exact source citations.",
+      "long_description": "CaseLens is a full-stack Retrieval-Augmented Generation (RAG) system engineered for legal document intelligence. Built with Clean Architecture on FastAPI, it lets users upload legal files, case records, contracts, and jurisprudence, then query them in natural language and receive precise, citation-backed answers. Features double-layer guardrails that abort LLM calls on empty retrieval results (saving 100% of API costs on empty queries), legal-aware text chunking optimized for Spanish legal vocabulary, and a React + TypeScript dashboard with real-time SSE token streaming and smart citation previews.",
+      "image": "/assets/caselens/caselens-image1.png",
       "images": [
-        "/assets/portfolio/portfolio-image1.png",
-        "/assets/portfolio/portfolio-image2.png",
-        "/assets/portfolio/portfolio-image3.png"
+        "/assets/caselens/caselens-image1.png"
       ],
-      "stack": ["Angular 21", "Tailwind CSS", "FastAPI", "Groq"],
-      "period": "2026-04",
+      "stack": ["FastAPI", "React", "TypeScript", "Tailwind CSS v4", "ChromaDB", "AWS S3", "Groq"],
+      "period": "2026-06",
       "links": {
-        "github": "https://github.com/amnotwallas/Portfolio",
-        "demo": "https://walterambriz.dev"
+        "github": "https://github.com/amnotwallas/CaseLens"
       },
       "metadata": {
         "status": "COMPLETED",
-        "role": "FULLSTACK DEVELOPER",
+        "role": "Backend & AI Engineer",
         "complexity": "HIGH",
-        "challenges": "Implementing high-performance retro effects and LLM-to-UI communication.",
-        "solutions": "Utilized GPU-accelerated CSS and custom event-driven architecture."
+        "challenges": "Enforcing strict Clean Architecture boundaries between domain logic and infrastructure (LLM, vector store, parsers) while streaming citations and tokens in real time via SSE.",
+        "solutions": "Designed a ports-and-adapters architecture isolating domain/use cases from FastAPI and storage adapters, added double-layer guardrails to cut unnecessary LLM calls, and implemented legal-aware chunking for Spanish-language documents."
       }
     },
     {
