@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Security
-from app.core.data_loader import data_provider
+from app.adapters.data.json_loader import data_provider
 from app.core.security import validate_api_key
 
 router = APIRouter()

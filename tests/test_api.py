@@ -46,7 +46,7 @@ def test_chat_stream_success():
     payload = {"query": "Test query", "session_id": "test_session"}
     
     # Mockeamos el generador de AgentService para evitar llamadas reales a la API
-    with patch("app.services.agent_service.AgentService.get_streaming_response") as mock_stream:
+    with patch("app.domain.services.agent.AgentService.get_streaming_response") as mock_stream:
         mock_stream.return_value = iter(["data: Hello\n\n", "data: world\n\n"])
         
         response = client.post("/api/v1/chat/stream", json=payload, headers=HEADERS)
@@ -129,7 +129,7 @@ def test_null_query_no_crash():
     payload = {"session_id": "test_null", "action": "chat"}
     
     # Mockear la respuesta para evitar llamadas reales a APIs de Groq en tests de integración
-    with patch("app.services.agent_service.AgentService.get_response") as mock_response:
+    with patch("app.domain.services.agent.AgentService.get_response") as mock_response:
         mock_response.return_value = {"message": "Hola, ¿en qué puedo ayudarte?", "actions": []}
         response = client.post("/api/v1/chat", json=payload, headers=HEADERS)
         assert response.status_code == 200
@@ -140,7 +140,7 @@ def test_guardrail_allows_valid_queries():
     """Verifica que consultas legítimas no sean bloqueadas por los guardrails."""
     # Probar consulta legítima con 'contactar' (no debe bloquearse por contener 'act')
     payload = {"query": "Como puedo contactar a Walter?", "session_id": "test_legit"}
-    with patch("app.services.agent_service.AgentService.get_response") as mock_response:
+    with patch("app.domain.services.agent.AgentService.get_response") as mock_response:
         mock_response.return_value = {"message": "Puedes contactar a Walter en su correo...", "actions": []}
         response = client.post("/api/v1/chat", json=payload, headers=HEADERS)
         assert response.status_code == 200
@@ -151,9 +151,10 @@ def test_guardrail_allows_valid_queries():
 @pytest.mark.asyncio
 async def test_agent_service_handles_null_arguments():
     """Verifica que el AgentService maneje correctamente cuando los argumentos de una herramienta son 'null' en string."""
-    from app.services.agent_service import AgentService
+    from app.domain.services.agent import AgentService
     
-    agent = AgentService()
+    mock_llm = MagicMock()
+    agent = AgentService(llm=mock_llm)
     
     # Creamos un mock del tool call que envía arguments="null"
     mock_tool_call = MagicMock()

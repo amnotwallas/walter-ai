@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, Security
 from fastapi.responses import StreamingResponse
 from app.domain.models.schemas import ChatRequest, ChatResponse
-from app.services.agent_service import AgentService
+from app.adapters.llm.litellm_adapter import LiteLLMAdapter
+from app.domain.services.agent import AgentService
 from app.core.security import validate_api_key, limiter
 from fastapi import Request
+
+def get_agent_service() -> AgentService:
+    return AgentService(llm=LiteLLMAdapter())
 
 router = APIRouter()
 @router.post("/chat", response_model=ChatResponse, dependencies=[Security(validate_api_key)])
@@ -11,7 +15,7 @@ router = APIRouter()
 async def chat(
     request_data: ChatRequest, 
     request: Request,
-    agent: AgentService = Depends()
+    agent: AgentService = Depends(get_agent_service)
 ):
     """
     Standard chat endpoint. Returns the full response at once.
@@ -29,7 +33,7 @@ async def chat(
 async def chat_stream(
     request_data: ChatRequest, 
     request: Request,
-    agent: AgentService = Depends()
+    agent: AgentService = Depends(get_agent_service)
 ):
     """
     Streaming chat endpoint. Returns a Server-Sent Events (SSE) stream.

@@ -1,12 +1,12 @@
+from typing import List, Optional, Any
 import litellm
 from app.core.config import get_settings
-from typing import List, Optional, Any
+from app.domain.ports.llm import LLMClientPort
 
-class LLMProvider:
+class LiteLLMAdapter(LLMClientPort):
     """
-    Provider class for LLM interactions using LiteLLM.
-    Supports any provider configured via config/llm.yml.
-    Implements Singleton pattern to reuse settings.
+    Concrete adapter implementing the LLMClientPort using LiteLLM.
+    Implements Singleton pattern.
     """
     _instance = None
 
@@ -16,17 +16,17 @@ class LLMProvider:
         return cls._instance
 
     @property
-    def client(self) -> Any:
-        """Deprecated: Returns None as Groq client is replaced by LiteLLM."""
-        return None
-
-    @property
     def model(self) -> str:
         return get_settings().llm_model
 
     @property
     def temperature(self) -> float:
         return get_settings().llm_temperature
+
+    @property
+    def client(self) -> Any:
+        # Backward-compatible property
+        return None
 
     async def get_completion(
         self,
@@ -35,7 +35,6 @@ class LLMProvider:
         tool_choice: str = "auto",
         temperature: Optional[float] = None,
     ) -> Any:
-        """Generates a non-streaming asynchronous completion."""
         kwargs = {
             "model": self.model,
             "messages": messages,
@@ -44,7 +43,6 @@ class LLMProvider:
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
-        
         return await litellm.acompletion(**kwargs)
 
     async def get_streaming_completion(
@@ -54,7 +52,6 @@ class LLMProvider:
         tool_choice: str = "auto",
         temperature: Optional[float] = None,
     ) -> Any:
-        """Generates a streaming asynchronous completion."""
         kwargs = {
             "model": self.model,
             "messages": messages,
@@ -64,5 +61,4 @@ class LLMProvider:
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
-        
         return await litellm.acompletion(**kwargs)

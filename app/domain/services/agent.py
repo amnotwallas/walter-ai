@@ -1,10 +1,10 @@
 import json
-from app.providers.llm_provider import LLMProvider
+from app.domain.ports.llm import LLMClientPort
 from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
-from app.core.data_loader import data_provider
+from app.adapters.data.json_loader import data_provider
 from app.domain.models.schemas import AgentAction
 
 logger = get_logger(__name__)
@@ -19,8 +19,8 @@ class AgentService:
     _sessions = {}
     MAX_ITERATIONS = 5
 
-    def __init__(self):
-        self.llm = LLMProvider()
+    def __init__(self, llm: LLMClientPort):
+        self.llm = llm
 
     # =========================
     # DATA CONTEXT
