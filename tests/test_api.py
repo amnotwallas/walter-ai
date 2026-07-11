@@ -154,7 +154,8 @@ async def test_agent_service_handles_null_arguments():
     from app.domain.services.agent import AgentService
     
     mock_llm = MagicMock()
-    agent = AgentService(llm=mock_llm)
+    mock_data_provider = MagicMock()
+    agent = AgentService(llm=mock_llm, data_provider=mock_data_provider)
     
     # Creamos un mock del tool call que envía arguments="null"
     mock_tool_call = MagicMock()

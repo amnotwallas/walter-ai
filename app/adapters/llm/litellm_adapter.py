@@ -82,21 +82,22 @@ class LiteLLMAdapter(LLMClientPort):
         async def stream_wrapper():
             prompt_tokens = 0
             completion_tokens = 0
-            async for chunk in response:
-                usage = getattr(chunk, "usage", None)
-                if usage:
-                    prompt_tokens = usage.prompt_tokens
-                    completion_tokens = usage.completion_tokens
-                yield chunk
-            
-            logger.info(
-                "LLM stream successful",
-                extra={
-                    "input_tokens": prompt_tokens,
-                    "output_tokens": completion_tokens,
-                    "total_tokens": prompt_tokens + completion_tokens,
-                    "model": self.model
-                }
-            )
+            try:
+                async for chunk in response:
+                    usage = getattr(chunk, "usage", None)
+                    if usage:
+                        prompt_tokens = usage.prompt_tokens
+                        completion_tokens = usage.completion_tokens
+                    yield chunk
+            finally:
+                logger.info(
+                    "LLM stream successful",
+                    extra={
+                        "input_tokens": prompt_tokens,
+                        "output_tokens": completion_tokens,
+                        "total_tokens": prompt_tokens + completion_tokens,
+                        "model": self.model
+                    }
+                )
             
         return stream_wrapper()

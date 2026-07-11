@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Load dotenv at start to export keys to os.environ for LiteLLM
 dotenv.load_dotenv()
 
+@lru_cache()
 def _load_llm_yaml() -> dict:
     path = pathlib.Path("app/config/config.yml")
     if not path.exists():

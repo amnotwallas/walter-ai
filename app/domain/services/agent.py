@@ -4,7 +4,7 @@ from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
-from app.adapters.data.json_loader import data_provider
+from app.domain.ports.data import DataProviderPort
 from app.domain.models.schemas import AgentAction
 
 logger = get_logger(__name__)
@@ -19,8 +19,9 @@ class AgentService:
     _sessions = {}
     MAX_ITERATIONS = 5
 
-    def __init__(self, llm: LLMClientPort):
+    def __init__(self, llm: LLMClientPort, data_provider: DataProviderPort):
         self.llm = llm
+        self.data_provider = data_provider
 
     # =========================
     # DATA CONTEXT
@@ -28,7 +29,7 @@ class AgentService:
 
     @property
     def _project_data(self):
-        return data_provider.get_data()
+        return self.data_provider.get_data()
 
     def _get_project_context(self, slug: str) -> str:
         data = self._project_data

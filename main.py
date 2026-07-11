@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.adapters.controllers.v1 import chat, portfolio, projects
 from app.core.config import get_settings
-from app.core.logger import ServerLogger
+from app.core.logger import ServerLogger, trace_id_var
 from app.core.security import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -28,8 +28,13 @@ async def log_requests(request: Request, call_next):
     trace_id = str(uuid.uuid4())
     start_time = time.time()
     
-    response = await call_next(request)
-    
+    # Set ContextVar trace ID
+    token = trace_id_var.set(trace_id)
+    try:
+        response = await call_next(request)
+    finally:
+        trace_id_var.reset(token)
+        
     process_time = (time.time() - start_time) * 1000
     
     logging.info(

@@ -4,6 +4,9 @@ import logging
 import json
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
+from contextvars import ContextVar
+
+trace_id_var: ContextVar[str] = ContextVar("trace_id", default="N/A")
 
 class JsonFormatter(logging.Formatter):
     """Custom formatter for structured JSON output."""
@@ -14,7 +17,7 @@ class JsonFormatter(logging.Formatter):
             "name": record.name,
             "message": record.getMessage(),
             "module": record.module,
-            "trace_id": getattr(record, 'trace_id', 'N/A')
+            "trace_id": trace_id_var.get()
         }
         # Extract dynamic metrics
         fields = [
@@ -57,8 +60,8 @@ class ColoredFormatter(logging.Formatter):
         """Optimized format that injects attributes into the record instead of creating new formatters."""
         record.color = self.LEVEL_COLORS.get(record.levelno, self.GREY)
         record.reset = self.RESET
-        trace_id = getattr(record, 'trace_id', None)
-        record.trace_prefix = f"[{trace_id}] " if trace_id else ""
+        trace_id = trace_id_var.get()
+        record.trace_prefix = f"[{trace_id}] " if trace_id and trace_id != "N/A" else ""
         return super().format(record)
 
 class ServerLogger:
