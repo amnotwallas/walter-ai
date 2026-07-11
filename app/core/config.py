@@ -4,6 +4,7 @@ from typing import Optional
 import yaml
 import pathlib
 
+@lru_cache()
 def _load_llm_yaml() -> dict:
     path = pathlib.Path("config/llm.yml")
     if not path.exists():
@@ -11,7 +12,9 @@ def _load_llm_yaml() -> dict:
     if not path.exists():
         raise FileNotFoundError("Neither config/llm.yml nor config/llm.yml.example was found.")
     with path.open() as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+        return data if isinstance(data, dict) else {}
+
 
 class Settings(BaseSettings):
     """
