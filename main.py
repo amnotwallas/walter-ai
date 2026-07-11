@@ -61,7 +61,7 @@ app.include_router(projects.router, prefix="/api/v1/assets", tags=["Assets"])
 async def root():
     """Root endpoint to check system status."""
     return {
-        "message": "WALTER_AI_NEURAL_CORE_ONLINE",
+        "message": "WALTER-AI",
         "documentation": "/docs",
         "status": "ready"
     }

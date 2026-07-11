@@ -311,7 +311,7 @@ class AgentService:
         except Exception as e:
             logger.error(f"Error in AgentService.get_response: {str(e)}")
             return {
-                "message": f"Sorry, I'm having trouble connecting to my neural core: {str(e)}",
+                "message": f"Sorry, I'm having trouble connecting: {str(e)}",
                 "actions": []
             }
 

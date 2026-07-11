@@ -335,7 +335,7 @@ wheels = [
 ]
 
 [[package]]
-name = "walter-ai-neural-core"
+name = "walter-ai"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

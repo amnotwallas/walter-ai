@@ -21,7 +21,7 @@ def test_root_endpoint():
     """Verifica que la ruta raíz responda correctamente."""
     response = client.get("/")
     assert response.status_code == 200
-    assert "WALTER_AI_NEURAL_CORE_ONLINE" in response.json()["message"]
+    assert "WALTER-AI" in response.json()["message"]
 
 def test_health_check():
     """Verifica que el endpoint de salud responda correctamente."""

@@ -22,7 +22,7 @@
   "basics": {
     "name": "Walter Jahir Ambriz Reyna",
     "label": "Backend & AI Engineer",
-    "system_label": "NEURAL_ARCHITECT",
+    "system_label": "ARCHITECT",
     "summary": "Backend & AI Engineer, Mexico. I build production systems with LLMs using Python and FastAPI. I love creating agents, connecting models to real data, and solving hard problems with AI. Passionate about learning and shipping things that work.",
     "email": "walterardev@gmail.com",
     "website": "walterambriz.dev",
@@ -110,8 +110,8 @@
     },
     {
       "id": "walter-ai",
-      "slug": "walter-ai-neural-core",
-      "name": "WALTER_AI Neural Core",
+      "slug": "walter-ai",
+      "name": "WALTER-AI",
       "description": "Multiagent orchestration engine for AI powered interactions.",
       "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
       "image": "/assets/Walter_AI/WalterAI.png",
@@ -120,7 +120,7 @@
       "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
       "period": "2026-04",
       "links": {
-        "github": "https://github.com/amnotwallas/walter-ai-neural-core",
+        "github": "https://github.com/amnotwallas/walter-ai",
         "demo": null
       },
       "metadata": {
