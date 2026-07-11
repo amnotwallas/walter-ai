@@ -224,4 +224,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Local LLM Config
-config/llm.yml
+app/config/config.yml

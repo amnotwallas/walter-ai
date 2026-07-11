@@ -1,22 +1,23 @@
-import dotenv
-dotenv.load_dotenv()
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+import pathlib
 from functools import lru_cache
 from typing import Optional
+import dotenv
 import yaml
-import pathlib
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Load dotenv at start to export keys to os.environ for LiteLLM
+dotenv.load_dotenv()
 
 def _load_llm_yaml() -> dict:
-    path = pathlib.Path("config/llm.yml")
+    path = pathlib.Path("app/config/config.yml")
     if not path.exists():
-        path = pathlib.Path("config/llm.yml.example")
+        path = pathlib.Path("app/config/config.yml.example")
     if not path.exists():
-        raise FileNotFoundError("Neither config/llm.yml nor config/llm.yml.example was found.")
+        raise FileNotFoundError("Neither app/config/config.yml nor app/config/config.yml.example was found.")
     with path.open() as f:
         data = yaml.safe_load(f)
         return data if isinstance(data, dict) else {}
-
 
 class Settings(BaseSettings):
     """
@@ -28,19 +29,17 @@ class Settings(BaseSettings):
     API_KEY: str  # Secret token to secure the API access
     APP_VERSION: str = "1.0.4"
     
-    # Optional provider keys - LiteLLM picks up whichever matches the active model prefix
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
 
     @property
     def llm_model(self) -> str:
-        return _load_llm_yaml().get("model", "groq/meta-llama/llama-4-scout-17b-16e-instruct") or "groq/meta-llama/llama-4-scout-17b-16e-instruct"
+        return _load_llm_yaml().get("llm", {}).get("model", "groq/meta-llama/llama-4-scout-17b-16e-instruct")
 
     @property
     def llm_temperature(self) -> float:
-        val = _load_llm_yaml().get("temperature")
-        return float(val) if val is not None else 0.5
+        return float(_load_llm_yaml().get("llm", {}).get("temperature", 0.5))
 
 @lru_cache()
 def get_settings():
@@ -49,3 +48,4 @@ def get_settings():
     LRU Cache ensures the settings are only loaded once.
     """
     return Settings()
+
