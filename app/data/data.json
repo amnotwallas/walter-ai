@@ -164,8 +164,8 @@
       "name": "WALTER-AI",
       "description": "Multiagent orchestration engine for AI powered interactions.",
       "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
-      "image": "/assets/WALTER-AI/WalterAI.png",
-      "images": ["/assets/WALTER-AI/WalterAI.png"],
+      "image": "/assets/Walter_AI/WalterAI.png",
+      "images": ["/assets/Walter_AI/WalterAI.png"],
 
       "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
       "period": "2026-04",

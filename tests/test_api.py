@@ -92,6 +92,11 @@ def test_project_image_secure():
     assert resp_auth.status_code == 200
     assert resp_auth.headers["content-type"] == "image/png"
 
+    # Verificar imagen de Walter_AI -> 200
+    resp_walter = client.get("/api/v1/assets/Walter_AI/WalterAI.png", headers=HEADERS)
+    assert resp_walter.status_code == 200
+    assert resp_walter.headers["content-type"] == "image/png"
+
 def test_guardrail_blocking():
     """Verifica que el guardrail de entrada bloquee consultas sospechosas."""
     # 1. Probar inyección en endpoint clásico (no-streaming)
