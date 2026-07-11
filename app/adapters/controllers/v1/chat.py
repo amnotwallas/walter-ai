@@ -1,15 +1,12 @@
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends, Security, Request
 from fastapi.responses import StreamingResponse
 from app.domain.models.schemas import ChatRequest, ChatResponse
-from app.adapters.llm.litellm_adapter import LiteLLMAdapter
 from app.domain.services.agent import AgentService
+from app.core.dependencies import get_agent_service
 from app.core.security import validate_api_key, limiter
-from fastapi import Request
-
-def get_agent_service() -> AgentService:
-    return AgentService(llm=LiteLLMAdapter())
 
 router = APIRouter()
+
 @router.post("/chat", response_model=ChatResponse, dependencies=[Security(validate_api_key)])
 @limiter.limit("5/minute")
 async def chat(
@@ -48,4 +45,3 @@ async def chat_stream(
         ),
         media_type="text/event-stream"
     )
-

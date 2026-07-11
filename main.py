@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import chat, portfolio, projects
+from app.adapters.controllers.v1 import chat, portfolio, projects
 from app.core.config import get_settings
 from app.core.logger import ServerLogger
 from app.core.security import limiter
