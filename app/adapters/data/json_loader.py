@@ -16,19 +16,18 @@ class JSONDataLoaderAdapter(DataProviderPort):
     Implements Singleton pattern.
     """
     _instance = None
-    _data = None
-    _last_mtime = 0
-    _last_hash = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._data_dir = os.path.join(
+            cls._instance._data = None
+            cls._instance._last_mtime = 0
+            cls._instance._last_hash = None
+            cls._instance._data_dir = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                 "data"
             )
-            cls._file_path = os.path.join(cls._data_dir, "data.json")
-            cls._instance.load_all()
+            cls._instance._file_path = os.path.join(cls._instance._data_dir, "data.json")
         return cls._instance
 
     def _file_hash(self) -> str:
@@ -68,7 +67,11 @@ class JSONDataLoaderAdapter(DataProviderPort):
             raise e
 
     def get_data(self) -> Optional[PortfolioData]:
-        self.load_all()
+        try:
+            self.load_all()
+        except Exception as e:
+            logger.error(f"Lazy loading of portfolio data failed: {e}")
+            return None
         return self._data
 
     def get_section(self, key: str, default=None) -> str:
