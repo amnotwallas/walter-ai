@@ -1,10 +1,12 @@
+import dotenv
+dotenv.load_dotenv()
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 import yaml
 import pathlib
 
-@lru_cache()
 def _load_llm_yaml() -> dict:
     path = pathlib.Path("config/llm.yml")
     if not path.exists():
@@ -33,11 +35,12 @@ class Settings(BaseSettings):
 
     @property
     def llm_model(self) -> str:
-        return _load_llm_yaml()["model"]
+        return _load_llm_yaml().get("model", "groq/meta-llama/llama-4-scout-17b-16e-instruct") or "groq/meta-llama/llama-4-scout-17b-16e-instruct"
 
     @property
     def llm_temperature(self) -> float:
-        return float(_load_llm_yaml().get("temperature", 0.5))
+        val = _load_llm_yaml().get("temperature")
+        return float(val) if val is not None else 0.5
 
 @lru_cache()
 def get_settings():

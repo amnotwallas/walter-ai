@@ -13,9 +13,6 @@ class LLMProvider:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            settings = get_settings()
-            cls._model = settings.llm_model
-            cls._temperature = settings.llm_temperature
         return cls._instance
 
     @property
@@ -25,11 +22,11 @@ class LLMProvider:
 
     @property
     def model(self) -> str:
-        return self._model
+        return get_settings().llm_model
 
     @property
     def temperature(self) -> float:
-        return self._temperature
+        return get_settings().llm_temperature
 
     async def get_completion(
         self,
