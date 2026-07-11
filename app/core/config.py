@@ -29,17 +29,21 @@ class Settings(BaseSettings):
     API_KEY: str  # Secret token to secure the API access
     APP_VERSION: str = "1.0.4"
     
+    # Optional provider keys - LiteLLM picks up whichever matches the active model prefix
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
 
     @property
     def llm_model(self) -> str:
-        return _load_llm_yaml().get("llm", {}).get("model", "groq/meta-llama/llama-4-scout-17b-16e-instruct")
+        llm_config = _load_llm_yaml().get("llm") or {}
+        return llm_config.get("model") or "groq/meta-llama/llama-4-scout-17b-16e-instruct"
 
     @property
     def llm_temperature(self) -> float:
-        return float(_load_llm_yaml().get("llm", {}).get("temperature", 0.5))
+        llm_config = _load_llm_yaml().get("llm") or {}
+        val = llm_config.get("temperature")
+        return float(val) if val is not None else 0.5
 
 @lru_cache()
 def get_settings():
