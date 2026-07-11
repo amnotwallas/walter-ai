@@ -3,7 +3,7 @@ import json
 import hashlib
 from typing import Optional
 from app.core.logger import get_logger
-from app.models.schemas import PortfolioData
+from app.domain.models.schemas import PortfolioData
 
 logger = get_logger(__name__)
 

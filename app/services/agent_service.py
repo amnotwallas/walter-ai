@@ -5,7 +5,7 @@ import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
 from app.core.data_loader import data_provider
-from app.models.schemas import AgentAction
+from app.domain.models.schemas import AgentAction
 
 logger = get_logger(__name__)
 

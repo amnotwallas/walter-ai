@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Security
 from fastapi.responses import StreamingResponse
-from app.models.schemas import ChatRequest, ChatResponse
+from app.domain.models.schemas import ChatRequest, ChatResponse
 from app.services.agent_service import AgentService
 from app.core.security import validate_api_key, limiter
 from fastapi import Request
