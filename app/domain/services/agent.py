@@ -227,10 +227,8 @@ class AgentService:
         saved_history = self._get_session_history(session_id)
         current_history = saved_history if session_id and not history else history
 
-        if not current_history:
-            logger.info(f"FIRST_MESSAGE_RECEIVED: Session ID: {session_id or 'Anonymous'} | Query: {user_query}")
-
-        logger.info(f"New Query: {user_query} | Session: {session_id or 'Anonymous'}")
+        is_first = " (First Message)" if not current_history else ""
+        logger.info(f"New Query{is_first}: '{user_query}' | Session: {session_id or 'Anonymous'}")
 
         context_info = self._get_navigation_context(context)
 

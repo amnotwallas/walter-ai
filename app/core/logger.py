@@ -80,7 +80,7 @@ class ServerLogger:
             logger.handlers.clear()
 
         # Silence noisy external libraries
-        noisy_loggers = ["httpx", "urllib3", "requests", "uvicorn.access", "uvicorn.error", "groq"]
+        noisy_loggers = ["httpx", "urllib3", "requests", "uvicorn.access", "uvicorn.error", "groq", "LiteLLM"]
         for logger_name in noisy_loggers:
             logging.getLogger(logger_name).setLevel(logging.WARNING)
 

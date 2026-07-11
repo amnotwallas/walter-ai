@@ -22,18 +22,12 @@ class JSONDataLoaderAdapter(DataProviderPort):
             cls._instance = super().__new__(cls)
             cls._instance._data = None
             cls._instance._last_mtime = 0
-            cls._instance._last_hash = None
             cls._instance._data_dir = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                 "data"
             )
             cls._instance._file_path = os.path.join(cls._instance._data_dir, "data.json")
         return cls._instance
-
-    def _file_hash(self) -> str:
-        """Computes an MD5 hash of the data file."""
-        with open(self._file_path, "rb") as f:
-            return hashlib.md5(f.read()).hexdigest()
 
     def load_all(self):
         """Loads and parses the portfolio json data from data.json."""
@@ -43,27 +37,24 @@ class JSONDataLoaderAdapter(DataProviderPort):
                 return
 
             current_mtime = os.path.getmtime(self._file_path)
-            current_hash = self._file_hash()
 
             should_reload = (
                 self._data is None
                 or current_mtime > self._last_mtime
-                or current_hash != self._last_hash
             )
 
             if should_reload:
-                logger.info(f"Reloading and validating data from {self._file_path}")
+                rel_path = os.path.relpath(self._file_path)
+                logger.info(f"Reloading and validating data from {rel_path}")
                 with open(self._file_path, "r", encoding="utf-8") as f:
                     raw_data = json.load(f)
 
                 self._data = PortfolioData(**raw_data)
                 self._last_mtime = current_mtime
-                self._last_hash = current_hash
                 logger.info("Portfolio data loaded successfully.")
         except Exception as e:
             logger.error(f"Error loading portfolio data: {e}")
             self._data = None
-            self._last_hash = None
             raise e
 
     def get_data(self) -> Optional[PortfolioData]:
