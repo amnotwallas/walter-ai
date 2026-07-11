@@ -25,18 +25,23 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Middleware to log requests, measure time and inject Trace ID."""
     trace_id = str(uuid.uuid4())
     start_time = time.time()
     
-    # Process request
     response = await call_next(request)
     
     process_time = (time.time() - start_time) * 1000
     
     logging.info(
-        f"{request.method} {request.url.path} | Status: {response.status_code} | Time: {process_time:.2f}ms",
-        extra={"trace_id": trace_id}
+        f"{request.method} {request.url.path} completed in {process_time:.2f}ms",
+        extra={
+            "trace_id": trace_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "latency_ms": round(process_time, 2),
+            "client_ip": request.client.host if request.client else "unknown"
+        }
     )
     
     response.headers["X-Trace-ID"] = trace_id

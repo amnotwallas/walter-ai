@@ -16,6 +16,15 @@ class JsonFormatter(logging.Formatter):
             "module": record.module,
             "trace_id": getattr(record, 'trace_id', 'N/A')
         }
+        # Extract dynamic metrics
+        fields = [
+            "method", "path", "status_code", "latency_ms", 
+            "client_ip", "input_tokens", "output_tokens", "total_tokens"
+        ]
+        for field in fields:
+            if hasattr(record, field):
+                log_record[field] = getattr(record, field)
+
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_record)

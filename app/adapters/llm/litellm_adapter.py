@@ -1,7 +1,10 @@
 from typing import List, Optional, Any
 import litellm
 from app.core.config import get_settings
+from app.core.logger import get_logger
 from app.domain.ports.llm import LLMClientPort
+
+logger = get_logger(__name__)
 
 class LiteLLMAdapter(LLMClientPort):
     """
@@ -43,7 +46,19 @@ class LiteLLMAdapter(LLMClientPort):
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
-        return await litellm.acompletion(**kwargs)
+        response = await litellm.acompletion(**kwargs)
+        usage = getattr(response, "usage", None)
+        if usage:
+            logger.info(
+                "LLM completion successful",
+                extra={
+                    "input_tokens": usage.prompt_tokens,
+                    "output_tokens": usage.completion_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "model": self.model
+                }
+            )
+        return response
 
     async def get_streaming_completion(
         self,
@@ -57,8 +72,31 @@ class LiteLLMAdapter(LLMClientPort):
             "messages": messages,
             "temperature": temperature if temperature is not None else self.temperature,
             "stream": True,
+            "stream_options": {"include_usage": True},
         }
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
-        return await litellm.acompletion(**kwargs)
+        response = await litellm.acompletion(**kwargs)
+        
+        async def stream_wrapper():
+            prompt_tokens = 0
+            completion_tokens = 0
+            async for chunk in response:
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    prompt_tokens = usage.prompt_tokens
+                    completion_tokens = usage.completion_tokens
+                yield chunk
+            
+            logger.info(
+                "LLM stream successful",
+                extra={
+                    "input_tokens": prompt_tokens,
+                    "output_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                    "model": self.model
+                }
+            )
+            
+        return stream_wrapper()
