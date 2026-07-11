@@ -1,0 +1,5 @@
+# Copy this file to config/llm.yml and set your model.
+# The prefix (groq/, openai/, anthropic/, ollama/) selects the provider.
+
+model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+temperature: 0.5
