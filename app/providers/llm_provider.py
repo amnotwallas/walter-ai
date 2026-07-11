@@ -19,6 +19,11 @@ class LLMProvider:
         return cls._instance
 
     @property
+    def client(self) -> Any:
+        """Deprecated: Returns None as Groq client is replaced by LiteLLM."""
+        return None
+
+    @property
     def model(self) -> str:
         return self._model
 
@@ -37,7 +42,7 @@ class LLMProvider:
         kwargs = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature or self.temperature,
+            "temperature": temperature if temperature is not None else self.temperature,
         }
         if tools:
             kwargs["tools"] = tools
@@ -56,7 +61,7 @@ class LLMProvider:
         kwargs = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature or self.temperature,
+            "temperature": temperature if temperature is not None else self.temperature,
             "stream": True,
         }
         if tools:
