@@ -1,4 +1,4 @@
-# WALTER_AI
+# WALTER-AI
 
 > **Motor de orquestación multiagente asíncrono** diseñado para actuar como una interfaz inteligente entre usuarios y un repositorio de datos profesionales estructurados. Implementa una arquitectura basada en el patrón **ReAct (Reasoning and Acting)** con FastAPI y Groq.
 
