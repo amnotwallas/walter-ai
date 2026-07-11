@@ -1,4 +1,4 @@
-# WALTER_AI: Neural Core Engine
+# WALTER_AI
 
 > **Motor de orquestación multiagente asíncrono** diseñado para actuar como una interfaz inteligente entre usuarios y un repositorio de datos profesionales estructurados. Implementa una arquitectura basada en el patrón **ReAct (Reasoning and Acting)** con FastAPI y Groq.
 
@@ -68,7 +68,7 @@ graph TD
 ## 3. Estructura del Proyecto
 
 ```text
-walter-ai-neural-core/
+walter-ai/
 ├── app/
 │   ├── api/            # Endpoints y definición de rutas FastAPI
 │   ├── core/           # Configuración, prompts del sistema y cargador de datos
