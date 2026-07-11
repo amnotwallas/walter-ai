@@ -1,6 +1,6 @@
 # WALTER-AI
 
-> **Motor de orquestación multiagente asíncrono** diseñado para actuar como una interfaz inteligente entre usuarios y un repositorio de datos profesionales estructurados. Implementa una arquitectura basada en el patrón **ReAct (Reasoning and Acting)** con FastAPI y Groq.
+> **Motor de orquestación multiagente asíncrono** diseñado para actuar como una interfaz inteligente entre usuarios y un repositorio de datos profesionales estructurados. Implementa una arquitectura hexagonal limpia basada en el patrón **ReAct (Reasoning and Acting)** con FastAPI, LiteLLM y proveedores de LLM como Groq.
 
 ---
 
@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Pydantic-v2-E92063?style=flat-square&logo=pydantic&logoColor=white" alt="Pydantic" />
-  <img src="https://img.shields.io/badge/Groq_SDK-Llama_3.1-orange?style=flat-square" alt="Groq" />
+  <img src="https://img.shields.io/badge/LiteLLM-Integrated-blue?style=flat-square" alt="LiteLLM" />
   <img src="https://img.shields.io/badge/Package_Manager-uv-blue?style=flat-square" alt="UV" />
   <img src="https://img.shields.io/badge/Deploy-Vercel-000000?style=flat-square&logo=vercel&logoColor=white" alt="Vercel" />
 </p>
@@ -42,26 +42,107 @@ WALTER-AI es un backend de alto rendimiento desarrollado con **FastAPI**. Su pro
 
 ## 2. Arquitectura del Sistema
 
-El flujo de ejecución separa la capa de transporte, la capa de razonamiento y el proveedor de datos:
+El flujo de ejecución separa los controladores (HTTP/SSE), la capa de negocio (servicios y modelos de dominio) y los adaptadores de infraestructura para APIs externas o persistencia, siguiendo los principios de la arquitectura hexagonal:
 
 ```mermaid
 graph TD
-    A[Client / UI] -->|POST /chat/stream| B[FastAPI Router]
-    B --> C{Security Layer}
-    C -->|Valid X-API-KEY| D[AgentService Orchestrator]
-    C -->|Invalid| E[403 Forbidden]
+    %% Nodos Principales
+    A[Client / UI]
+    B[FastAPI Router]
+    C{Security & Limiter}
+    D[AgentService Orchestrator]
+    E[403 Forbidden]
+    F[Memory Provider]
+    G["Context Provider <br/> (data.json)"]
+    H["LLM: LiteLLM <br/> (Groq / OpenAI / Anthropic)"]
+    I[Tool Registry]
 
-    D --> F[Memory Provider]
-    D --> G[Context Provider / data.json]
+    %% Conexiones de Entrada
+    A -->|POST /chat & /chat/stream| B
+    B --> C
+    C -->|Valid API Key| D
+    C -->|Invalid| E
 
-    subgraph Execution_Loop
-        D <-->|Tools Schemas| H[LLM: Groq Llama 3.1]
-        D -->|Call| I[Tool Registry]
-        I --> J[Functional Agents / Tools]
-        J -->|Result| D
+    D --> F
+    D --> G
+
+    %% Bucle ReAct y Sub-Herramientas
+    D <-->|Tools Schemas| H
+    D -->|Call| I
+
+    subgraph Functional_Tools ["Herramientas de Agentes (CV Tools)"]
+        T1[Biographical Agent]
+        T2[Project Agent]
+        T3[Experience Agent]
+        T4[Navigation Agent]
+        T5[UI Agent]
     end
 
-    D -->|SSE Stream| A
+    I --> T1
+    I --> T2
+    I --> T3
+    I --> T4
+    I --> T5
+
+    T1 -->|Result| D
+    T2 -->|Result| D
+    T3 -->|Result| D
+    T4 -->|Result| D
+    T5 -->|Result| D
+
+    D -->|SSE Stream / JSON| A
+
+    %% Componente de Registro (Logger)
+    subgraph Logging_System ["Sistema de Logs (Structured JSON)"]
+        L[ServerLogger]
+        
+        %% Métricas/Campos Guardados
+        M1["HTTP Metadata <br/> (method, path, status, latency_ms, IP)"]
+        M2["LLM Tokens <br/> (input_tokens, output_tokens, total_tokens)"]
+        M3["Execution Logs <br/> (tool_name, arguments, success/error)"]
+        M4["Metadata & Context <br/> (timestamp, level, trace_id, module)"]
+    end
+
+    %% Conexiones de Logging
+    B -.->|Genera & Propaga| M4
+    B -.->|Registra| M1
+    H -.->|Reporta Consumo| M2
+    
+    T1 -.->|Registra Ejecución| M3
+    T2 -.->|Registra Ejecución| M3
+    T3 -.->|Registra Ejecución| M3
+    T4 -.->|Registra Ejecución| M3
+    T5 -.->|Registra Ejecución| M3
+
+    M1 --> L
+    M2 --> L
+    M3 --> L
+    M4 --> L
+
+    L -->|Escribe| Out[(server.log / stdout)]
+
+    %% Definición de Estilos (Premium UI UX)
+    classDef client fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;
+    classDef router fill:#f3e8ff,stroke:#6b21a8,stroke-width:2px,color:#581c87;
+    classDef security fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef orchestrator fill:#ede9fe,stroke:#4c1d95,stroke-width:2px,color:#2e1065;
+    classDef error fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#7f1d1d;
+    classDef provider fill:#f3f4f6,stroke:#374151,stroke-width:2px,color:#111827;
+    classDef execution fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#0c4a6e;
+    classDef tools fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46;
+    classDef logger fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#f3f4f6;
+    classDef metrics fill:#fff7ed,stroke:#ea580c,stroke-width:1px,color:#7c2d12;
+
+    class A client;
+    class B router;
+    class C security;
+    class D orchestrator;
+    class E error;
+    class F,G provider;
+    class H,I execution;
+    class T1,T2,T3,T4,T5 tools;
+    class L,Out logger;
+    class M1,M2,M3,M4 metrics;
 ```
 
 ---
@@ -71,16 +152,21 @@ graph TD
 ```text
 walter-ai/
 ├── app/
-│   ├── api/            # Endpoints y definición de rutas FastAPI
-│   ├── core/           # Configuración, prompts del sistema y cargador de datos
+│   ├── adapters/       # Adaptadores externos (controladores, datos, LLM)
+│   │   ├── controllers/# Endpoints y definición de rutas FastAPI (v1)
+│   │   ├── data/       # Cargador de datos (JSONDataLoaderAdapter)
+│   │   └── llm/        # Implementación del cliente LLM usando LiteLLM
+│   ├── config/         # Configuración basada en YAML (config.yml)
+│   ├── core/           # Configuración, logs globales, dependencias y seguridad
 │   ├── data/           # Repositorio de datos estructurados (data.json)
-│   ├── models/         # Modelos y esquemas de validación de Pydantic
-│   ├── providers/      # Proveedores de servicios (LLM y Groq Client)
-│   ├── services/       # Lógica central del Orquestador del Agente
+│   ├── domain/         # Capa de dominio (lógica de negocio pura)
+│   │   ├── models/     # Esquemas de Pydantic y modelos de dominio
+│   │   ├── ports/      # Puertos de entrada/salida (interfaces)
+│   │   └── services/   # Lógica central del orquestador (AgentService)
 │   ├── templates/      # Plantillas HTML de prueba (chat_ui.html)
-│   └── tools/          # Registro y lógica individual de herramientas (CV Tools)
+│   └── tools/          # Registro y definición de herramientas (CV Tools)
 ├── tests/              # Suite de pruebas unitarias y de integración
-├── main.py             # Punto de entrada principal de la aplicación
+├── main.py             # Punto de entrada principal de la aplicación FastAPI
 ├── Makefile            # Tareas de automatización comunes
 └── pyproject.toml      # Configuración de dependencias y herramientas
 ```
@@ -91,13 +177,16 @@ walter-ai/
 
 El sistema mapea agentes especializados como herramientas (tools) registradas en el orquestador:
 
-| Agente                 | Rol Específico                                       | Modelo (LLM)     | Herramientas Asociadas                                        |
-| :--------------------- | :--------------------------------------------------- | :--------------- | :------------------------------------------------------------ |
-| **Biographical Agent** | Datos biográficos, académicos y de contacto.         | Llama 3.1 70B/8B | `get_personal_info`                                           |
-| **Project Agent**      | Consulta técnica y búsqueda en el portafolio.        | Llama 3.1 70B/8B | `get_projects_list`, `get_project_by_slug`, `search_projects` |
-| **Experience Agent**   | Recuperación y análisis de historial laboral.        | Llama 3.1 70B/8B | `get_experience_info`                                         |
-| **Navigation Agent**   | Control de redirección de la interfaz gráfica.       | Llama 3.1 70B/8B | `trigger_navigation`                                          |
-| **UI Agent**           | Manipulación de elementos visuales (foco/highlight). | Llama 3.1 70B/8B | `highlight_element`                                           |
+| Agente                 | Rol Específico                                       | Modelo (LLM) | Herramientas Asociadas                                        |
+| :--------------------- | :--------------------------------------------------- | :----------- | :------------------------------------------------------------ |
+| **Biographical Agent** | Datos biográficos, académicos y de contacto.         | Dinámico     | `get_personal_info`                                           |
+| **Project Agent**      | Consulta técnica y búsqueda en el portafolio.        | Dinámico     | `get_projects_list`, `get_project_by_slug`, `search_projects` |
+| **Experience Agent**   | Recuperación y análisis de historial laboral.        | Dinámico     | `get_experience_info`                                         |
+| **Navigation Agent**   | Control de redirección de la interfaz gráfica.       | Dinámico     | `trigger_navigation`                                          |
+| **UI Agent**           | Manipulación de elementos visuales (foco/highlight). | Dinámico     | `highlight_element`                                           |
+
+> [!NOTE]
+> El LLM es resuelto dinámicamente según la configuración de `app/config/config.yml`. Por defecto utiliza `groq/meta-llama/llama-4-scout-17b-16e-instruct` mediante LiteLLM, pero es compatible con cualquier proveedor soportado por LiteLLM (OpenAI, Anthropic, Groq, etc.).
 
 ---
 
@@ -109,7 +198,7 @@ El ciclo ReAct asíncrono interactúa de la siguiente manera:
 sequenceDiagram
     participant U as Usuario
     participant O as Orquestador (AgentService)
-    participant L as LLM (Groq)
+    participant L as LLM (LiteLLM Adapter)
     participant A as Agentes Funcionales (Tools)
 
     U->>O: Consulta (ej: "Muestra detalles del proyecto X")
@@ -143,12 +232,16 @@ El sistema expone una API RESTful autodocumentada bajo el estándar OpenAPI.
 
 ### Chat y Streaming
 
+- **`POST /api/v1/chat`**
+  - **Propósito:** Devuelve la respuesta completa de la consulta en formato JSON.
+  - **Encabezados Requeridos:** `X-API-KEY` (para autenticación y Rate Limit).
+
 - **`POST /api/v1/chat/stream`**
-  - **Propósito:** Stream de respuestas utilizando SSE.
+  - **Propósito:** Stream de respuestas utilizando SSE (Server-Sent Events).
   - **Encabezados Requeridos:** `X-API-KEY` (para autenticación y Rate Limit).
 
 > [!IMPORTANT]
-> Todas las peticiones al endpoint de chat requieren el encabezado `X-API-KEY` para validar la identidad del cliente y aplicar políticas de Rate Limiting.
+> Todas las peticiones a los endpoints de chat requieren el encabezado `X-API-KEY` para validar la identidad del cliente y aplicar políticas de Rate Limiting.
 
 <details>
 <summary><b>Ver estructura del payload (Request Body)</b></summary>
@@ -157,7 +250,10 @@ El sistema expone una API RESTful autodocumentada bajo el estándar OpenAPI.
 {
   "query": "Como puedo contactar a Walter?",
   "session_id": "973884a3-3c5e-4004-86fb-21057f198a35",
+  "action": "chat",
+  "history": [],
   "context": {
+    "url": "http://localhost:4200/home",
     "page": "home",
     "project_slug": null
   }
@@ -177,11 +273,15 @@ data: {"message": "Walter a través de su correo...", "actions": []}
 
 </details>
 
-### Activos del Portafolio
+### Datos del Portafolio y Activos
 
-- **`GET /api/v1/assets/{path:path}`**
-  - **Propósito:** Distribución protegida de imágenes y assets.
-  - **Seguridad:** Requiere validación de token.
+- **`GET /api/v1/data`**
+  - **Propósito:** Obtener la información estructurada de todo el portafolio (equivalente a `data.json`).
+  - **Encabezados Requeridos:** `X-API-KEY`.
+
+- **`GET /api/v1/assets/{project_name}/{image_name}`**
+  - **Propósito:** Distribución protegida de imágenes y assets de los proyectos.
+  - **Encabezados Requeridos:** `X-API-KEY`.
 
 ---
 
@@ -198,10 +298,11 @@ make install
 
 ### Ejecución de Pruebas
 
-Valida la suite de pruebas unitarias y de integración del backend:
+Valida la suite de pruebas unitarias y de integración del backend. Debido a las rutas de los módulos en la arquitectura, es necesario definir la ruta de Python actual:
 
 ```bash
-make test
+# Ejecutar suite de pruebas con la ruta de Python establecida
+PYTHONPATH=. make test
 
 # Ejecución manual alternativa:
 PYTHONPATH=. uv run pytest tests/
@@ -212,8 +313,20 @@ PYTHONPATH=. uv run pytest tests/
 Crea un archivo `.env` en la raíz del proyecto basándote en `.env.example`:
 
 ```env
-GROQ_API_KEY=tu_groq_api_key
 API_KEY=tu_token_secreto_para_la_api
+GROQ_API_KEY=tu_groq_api_key
+OPENAI_API_KEY=tu_openai_api_key_opcional
+ANTHROPIC_API_KEY=tu_anthropic_api_key_opcional
+```
+
+### Configuración del LLM (LiteLLM)
+
+El archivo `app/config/config.yml` controla la configuración del modelo de lenguaje y la temperatura de inferencia:
+
+```yaml
+llm:
+  model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+  temperature: 0.5
 ```
 
 > [!TIP]
