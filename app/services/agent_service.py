@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 class AgentService:
     """
-    Main orchestration service for WALTER_AI.
+    Main orchestration service for WALTER-AI.
     Handles session management, tool execution, and LLM communication.
     """
 
@@ -327,7 +327,7 @@ class AgentService:
                 del self._sessions[session_id]
 
             logger.info(f"NEW_CONVERSATION_STARTED: Session ID: {session_id or 'Anonymous'}")
-            yield "data: {\"message\": \"WALTER_AI_READY\", \"actions\": []}\n\n"
+            yield "data: {\"message\": \"WALTER-AI_READY\", \"actions\": []}\n\n"
             return
 
         if not self._check_input_guardrails(user_query):

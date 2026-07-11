@@ -15,7 +15,7 @@ ServerLogger.setup()
 settings = get_settings()
 
 app = FastAPI(
-    title="WALTER_AI_API",
+    title="WALTER-AI_API",
     description="AI Backend for Walter Ambriz's Portfolio",
     version=settings.APP_VERSION
 )

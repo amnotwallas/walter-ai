@@ -18,6 +18,7 @@
 ---
 
 ## Tabla de Contenidos
+
 - [1. Introducción Técnica](#1-introducción-técnica)
 - [2. Arquitectura del Sistema](#2-arquitectura-del-sistema)
 - [3. Estructura del Proyecto](#3-estructura-del-proyecto)
@@ -32,7 +33,7 @@
 
 ## 1. Introducción Técnica
 
-WALTER_AI es un backend de alto rendimiento desarrollado con **FastAPI**. Su propósito principal es la resolución de consultas complejas mediante la descomposición funcional de tareas, permitiendo que un orquestador central coordine agentes especializados en la recuperación de información y ejecución de acciones en tiempo real (por ejemplo, navegaciones automáticas en la UI del portafolio).
+WALTER-AI es un backend de alto rendimiento desarrollado con **FastAPI**. Su propósito principal es la resolución de consultas complejas mediante la descomposición funcional de tareas, permitiendo que un orquestador central coordine agentes especializados en la recuperación de información y ejecución de acciones en tiempo real (por ejemplo, navegaciones automáticas en la UI del portafolio).
 
 > [!NOTE]
 > Toda la lógica corre bajo un flujo asíncrono optimizado mediante el gestor de paquetes de alto rendimiento `uv`.
@@ -49,17 +50,17 @@ graph TD
     B --> C{Security Layer}
     C -->|Valid X-API-KEY| D[AgentService Orchestrator]
     C -->|Invalid| E[403 Forbidden]
-    
+
     D --> F[Memory Provider]
     D --> G[Context Provider / data.json]
-    
+
     subgraph Execution_Loop
         D <-->|Tools Schemas| H[LLM: Groq Llama 3.1]
         D -->|Call| I[Tool Registry]
         I --> J[Functional Agents / Tools]
         J -->|Result| D
     end
-    
+
     D -->|SSE Stream| A
 ```
 
@@ -90,13 +91,13 @@ walter-ai/
 
 El sistema mapea agentes especializados como herramientas (tools) registradas en el orquestador:
 
-| Agente | Rol Específico | Modelo (LLM) | Herramientas Asociadas |
-| :--- | :--- | :--- | :--- |
-| **Biographical Agent** | Datos biográficos, académicos y de contacto. | Llama 3.1 70B/8B | `get_personal_info` |
-| **Project Agent** | Consulta técnica y búsqueda en el portafolio. | Llama 3.1 70B/8B | `get_projects_list`, `get_project_by_slug`, `search_projects` |
-| **Experience Agent** | Recuperación y análisis de historial laboral. | Llama 3.1 70B/8B | `get_experience_info` |
-| **Navigation Agent** | Control de redirección de la interfaz gráfica. | Llama 3.1 70B/8B | `trigger_navigation` |
-| **UI Agent** | Manipulación de elementos visuales (foco/highlight). | Llama 3.1 70B/8B | `highlight_element` |
+| Agente                 | Rol Específico                                       | Modelo (LLM)     | Herramientas Asociadas                                        |
+| :--------------------- | :--------------------------------------------------- | :--------------- | :------------------------------------------------------------ |
+| **Biographical Agent** | Datos biográficos, académicos y de contacto.         | Llama 3.1 70B/8B | `get_personal_info`                                           |
+| **Project Agent**      | Consulta técnica y búsqueda en el portafolio.        | Llama 3.1 70B/8B | `get_projects_list`, `get_project_by_slug`, `search_projects` |
+| **Experience Agent**   | Recuperación y análisis de historial laboral.        | Llama 3.1 70B/8B | `get_experience_info`                                         |
+| **Navigation Agent**   | Control de redirección de la interfaz gráfica.       | Llama 3.1 70B/8B | `trigger_navigation`                                          |
+| **UI Agent**           | Manipulación de elementos visuales (foco/highlight). | Llama 3.1 70B/8B | `highlight_element`                                           |
 
 ---
 
@@ -129,10 +130,10 @@ sequenceDiagram
 
 Antes de realizar llamadas a los LLMs, el motor valida de forma estricta las entradas para mitigar abusos:
 
-*   **Filtro contra Inyecciones (Prompt Injection):** Expresiones regulares acotadas por límites de palabra (`\b`) bloquean patrones de desborde de reglas (*"forget rules"*, *"act as..."*) sin generar falsos positivos en palabras clave válidas como *"contactar"*.
-*   **Restricción de Longitud:** Limita la consulta a **300 caracteres** para prevenir desbordamiento de contexto deliberado.
-*   **Limpieza de Formato:** Intercepta el uso excesivo de caracteres especiales (`{}`, `[]`, `<>`) para bloquear inyecciones de plantillas.
-*   **Saneamiento de Parámetros:** Normaliza de forma transparente los argumentos nulos del LLM (ej. `"null"` en JSON) convirtiéndolos a `{}` antes de invocar las herramientas de Python.
+- **Filtro contra Inyecciones (Prompt Injection):** Expresiones regulares acotadas por límites de palabra (`\b`) bloquean patrones de desborde de reglas (_"forget rules"_, _"act as..."_) sin generar falsos positivos en palabras clave válidas como _"contactar"_.
+- **Restricción de Longitud:** Limita la consulta a **300 caracteres** para prevenir desbordamiento de contexto deliberado.
+- **Limpieza de Formato:** Intercepta el uso excesivo de caracteres especiales (`{}`, `[]`, `<>`) para bloquear inyecciones de plantillas.
+- **Saneamiento de Parámetros:** Normaliza de forma transparente los argumentos nulos del LLM (ej. `"null"` en JSON) convirtiéndolos a `{}` antes de invocar las herramientas de Python.
 
 ---
 
@@ -141,9 +142,10 @@ Antes de realizar llamadas a los LLMs, el motor valida de forma estricta las ent
 El sistema expone una API RESTful autodocumentada bajo el estándar OpenAPI.
 
 ### Chat y Streaming
-*   **`POST /api/v1/chat/stream`**
-    *   **Propósito:** Stream de respuestas utilizando SSE.
-    *   **Encabezados Requeridos:** `X-API-KEY` (para autenticación y Rate Limit).
+
+- **`POST /api/v1/chat/stream`**
+  - **Propósito:** Stream de respuestas utilizando SSE.
+  - **Encabezados Requeridos:** `X-API-KEY` (para autenticación y Rate Limit).
 
 > [!IMPORTANT]
 > Todas las peticiones al endpoint de chat requieren el encabezado `X-API-KEY` para validar la identidad del cliente y aplicar políticas de Rate Limiting.
@@ -161,6 +163,7 @@ El sistema expone una API RESTful autodocumentada bajo el estándar OpenAPI.
   }
 }
 ```
+
 </details>
 
 <details>
@@ -171,26 +174,32 @@ data: {"message": "Puedes contactar a ", "actions": []}
 
 data: {"message": "Walter a través de su correo...", "actions": []}
 ```
+
 </details>
 
 ### Activos del Portafolio
-*   **`GET /api/v1/assets/{path:path}`**
-    *   **Propósito:** Distribución protegida de imágenes y assets.
-    *   **Seguridad:** Requiere validación de token.
+
+- **`GET /api/v1/assets/{path:path}`**
+  - **Propósito:** Distribución protegida de imágenes y assets.
+  - **Seguridad:** Requiere validación de token.
 
 ---
 
 ## 8. Configuración y Despliegue
 
 ### Requisitos Previos e Instalación
+
 El proyecto utiliza `uv` para garantizar la reproducibilidad y rapidez del entorno virtual:
+
 ```bash
 # Sincronizar e instalar dependencias
 make install
 ```
 
 ### Ejecución de Pruebas
+
 Valida la suite de pruebas unitarias y de integración del backend:
+
 ```bash
 make test
 
@@ -199,7 +208,9 @@ PYTHONPATH=. uv run pytest tests/
 ```
 
 ### Variables de Entorno
+
 Crea un archivo `.env` en la raíz del proyecto basándote en `.env.example`:
+
 ```env
 GROQ_API_KEY=tu_groq_api_key
 API_KEY=tu_token_secreto_para_la_api
@@ -207,6 +218,7 @@ API_KEY=tu_token_secreto_para_la_api
 
 > [!TIP]
 > Si deseas desplegar en **Vercel**, asegúrate de sincronizar primero el archivo de requerimientos estándar:
+>
 > ```bash
 > make export
 > ```

@@ -1,7 +1,7 @@
 .PHONY: help install dev test clean sync export
 
 help:
-	@echo "🛠️ WALTER_AI API (UV Optimized) - Available commands:"
+	@echo "🛠️ WALTER-AI API (UV Optimized) - Available commands:"
 	@echo "  make install  - Install and sync all dependencies"
 	@echo "  make dev      - Run the development server with hot-reload"
 	@echo "  make test     - Run unit tests with pytest"

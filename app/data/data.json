@@ -11,8 +11,13 @@
     "uptime_start": "2026-04-27T00:00:00Z"
   },
   "terminal": {
-    "welcome_message": "[WALTER_AI]: SYSTEM_READY. TRY_COMMANDS: 'EXPERIENCE' OR 'VIEW_PROJECTS'_",
-    "command_suggestions": ["EXPERIENCE", "VIEW_PROJECTS", "SYSTEM_STATUS", "CONTACT"],
+    "welcome_message": "[WALTER-AI]: SYSTEM_READY. TRY_COMMANDS: 'EXPERIENCE' OR 'VIEW_PROJECTS'_",
+    "command_suggestions": [
+      "EXPERIENCE",
+      "VIEW_PROJECTS",
+      "SYSTEM_STATUS",
+      "CONTACT"
+    ],
     "boot_sequence": [
       "INITIALIZING_MODULES...",
       "CONNECTING_TO_LLM_GATEWAY... [OK]",
@@ -47,23 +52,55 @@
     },
     {
       "category": "Backend Development",
-      "items": ["FastAPI", "REST APIs", "Microservices", "Service Layer Architecture", "Request Validation", "JWT", "RBAC", "Server Sent Events"]
+      "items": [
+        "FastAPI",
+        "REST APIs",
+        "Microservices",
+        "Service Layer Architecture",
+        "Request Validation",
+        "JWT",
+        "RBAC",
+        "Server Sent Events"
+      ]
     },
     {
       "category": "AI & LLM Systems",
-      "items": ["LLM Integration (OpenAI APIs)", "Multiagent Orchestration", "Tool Use", "Prompt Engineering"]
+      "items": [
+        "LLM Integration (OpenAI APIs)",
+        "Multiagent Orchestration",
+        "Tool Use",
+        "Prompt Engineering"
+      ]
     },
     {
       "category": "AI Evaluation",
-      "items": ["MLflow Evaluation Pipelines", "LLM-based Evaluation", "Automated Response Validation"]
+      "items": [
+        "MLflow Evaluation Pipelines",
+        "LLM-based Evaluation",
+        "Automated Response Validation"
+      ]
     },
     {
       "category": "Data & Integrations",
-      "items": ["SQL Server", "Data Pipelines", "API Integration", "Data Integrity", "Time Series Data"]
+      "items": [
+        "SQL Server",
+        "Data Pipelines",
+        "API Integration",
+        "Data Integrity",
+        "Time Series Data"
+      ]
     },
     {
       "category": "Infrastructure & Tools",
-      "items": ["Docker", "GitHub Actions", "Linux", "SSH", "Git", "Remote Debugging", "Azure"]
+      "items": [
+        "Docker",
+        "GitHub Actions",
+        "Linux",
+        "SSH",
+        "Git",
+        "Remote Debugging",
+        "Azure"
+      ]
     }
   ],
   "work": [
@@ -81,7 +118,14 @@
       "period": "2025-02 — 2025-08",
       "summary": "I designed and implemented a comprehensive automation system for managing professional residencies. Using JavaScript and Google Apps Script, I optimized communication between the institution, students, and program directors. The solution automated the sending of dynamic status updates from Google Sheets, significantly reducing response times and eliminating human error in critical administrative processes.",
       "image": "https://apatzingan.tecnm.mx/wp-content/uploads/2022/04/TecNM-Vertical-451x372.png",
-      "highlights": ["JavaScript", "Google Sheets", "Automation", "Email Sending", "Data Visualization", "Google Apps Script"]
+      "highlights": [
+        "JavaScript",
+        "Google Sheets",
+        "Automation",
+        "Email Sending",
+        "Data Visualization",
+        "Google Apps Script"
+      ]
     }
   ],
   "projects": [
@@ -92,10 +136,16 @@
       "description": "Full-stack legal RAG system with double-layer guardrails, SSE streaming, and exact source citations.",
       "long_description": "CaseLens is a full-stack Retrieval-Augmented Generation (RAG) system engineered for legal document intelligence. Built with Clean Architecture on FastAPI, it lets users upload legal files, case records, contracts, and jurisprudence, then query them in natural language and receive precise, citation-backed answers. Features double-layer guardrails that abort LLM calls on empty retrieval results (saving 100% of API costs on empty queries), legal-aware text chunking optimized for Spanish legal vocabulary, and a React + TypeScript dashboard with real-time SSE token streaming and smart citation previews.",
       "image": "/assets/caselens/caselens-image1.png",
-      "images": [
-        "/assets/caselens/caselens-image1.png"
+      "images": ["/assets/caselens/caselens-image1.png"],
+      "stack": [
+        "FastAPI",
+        "React",
+        "TypeScript",
+        "Tailwind CSS v4",
+        "ChromaDB",
+        "AWS S3",
+        "Groq"
       ],
-      "stack": ["FastAPI", "React", "TypeScript", "Tailwind CSS v4", "ChromaDB", "AWS S3", "Groq"],
       "period": "2026-06",
       "links": {
         "github": "https://github.com/amnotwallas/CaseLens"
@@ -114,8 +164,8 @@
       "name": "WALTER-AI",
       "description": "Multiagent orchestration engine for AI powered interactions.",
       "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
-      "image": "/assets/Walter_AI/WalterAI.png",
-      "images": ["/assets/Walter_AI/WalterAI.png"],
+      "image": "/assets/WALTER-AI/WalterAI.png",
+      "images": ["/assets/WALTER-AI/WalterAI.png"],
 
       "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
       "period": "2026-04",

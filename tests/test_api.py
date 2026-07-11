@@ -66,7 +66,7 @@ def test_chat_init_action():
     response = client.post("/api/v1/chat/stream", json=payload, headers=HEADERS)
     
     assert response.status_code == 200
-    assert "WALTER_AI_READY" in response.text
+    assert "WALTER-AI_READY" in response.text
 
 def test_rate_limiting():
     """Verifica que el rate limiting esté activo."""
