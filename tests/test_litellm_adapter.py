@@ -32,7 +32,7 @@ async def test_litellm_adapter_get_completion():
             temperature=0.7
         )
         mock_logger_info.assert_called_once_with(
-            "LLM completion successful",
+            f"LLM completion successful | Tokens: {10} in, {20} out (total: {30})",
             extra={
                 "input_tokens": 10,
                 "output_tokens": 20,
@@ -80,7 +80,7 @@ async def test_litellm_adapter_get_streaming_completion():
             stream_options={"include_usage": True}
         )
         mock_logger_info.assert_called_once_with(
-            "LLM stream successful",
+            f"LLM stream completed | Tokens: {5} in, {10} out (total: {15})",
             extra={
                 "input_tokens": 5,
                 "output_tokens": 10,

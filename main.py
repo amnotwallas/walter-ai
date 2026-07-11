@@ -32,25 +32,37 @@ async def log_requests(request: Request, call_next):
     token = trace_id_var.set(trace_id)
     try:
         response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000
+        logging.info(
+            f"{request.method} {request.url.path} completed in {process_time:.2f}ms | Status: {response.status_code}",
+            extra={
+                "trace_id": trace_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "latency_ms": round(process_time, 2),
+                "client_ip": request.client.host if request.client else "unknown"
+            }
+        )
+        response.headers["X-Trace-ID"] = trace_id
+        return response
+    except Exception as e:
+        process_time = (time.time() - start_time) * 1000
+        logging.error(
+            f"{request.method} {request.url.path} failed in {process_time:.2f}ms | Error: {e}",
+            exc_info=True,
+            extra={
+                "trace_id": trace_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": 500,
+                "latency_ms": round(process_time, 2),
+                "client_ip": request.client.host if request.client else "unknown"
+            }
+        )
+        raise e
     finally:
         trace_id_var.reset(token)
-        
-    process_time = (time.time() - start_time) * 1000
-    
-    logging.info(
-        f"{request.method} {request.url.path} completed in {process_time:.2f}ms",
-        extra={
-            "trace_id": trace_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "latency_ms": round(process_time, 2),
-            "client_ip": request.client.host if request.client else "unknown"
-        }
-    )
-    
-    response.headers["X-Trace-ID"] = trace_id
-    return response
 
 app.add_middleware(
     CORSMiddleware,

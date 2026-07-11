@@ -50,7 +50,7 @@ class LiteLLMAdapter(LLMClientPort):
         usage = getattr(response, "usage", None)
         if usage:
             logger.info(
-                "LLM completion successful",
+                f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
                 extra={
                     "input_tokens": usage.prompt_tokens,
                     "output_tokens": usage.completion_tokens,
@@ -91,7 +91,7 @@ class LiteLLMAdapter(LLMClientPort):
                     yield chunk
             finally:
                 logger.info(
-                    "LLM stream successful",
+                    f"LLM stream completed | Tokens: {prompt_tokens} in, {completion_tokens} out (total: {prompt_tokens + completion_tokens})",
                     extra={
                         "input_tokens": prompt_tokens,
                         "output_tokens": completion_tokens,
