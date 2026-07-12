@@ -1,9 +1,11 @@
+import os
 import time
 import uuid
 import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.adapters.controllers.v1 import chat, portfolio, projects
 from app.core.config import get_settings
 from app.core.logger import ServerLogger, trace_id_var
@@ -75,6 +77,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if os.getenv("VERCEL") != "1":
+    Instrumentator().instrument(app).expose(app)
+
 app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
 app.include_router(portfolio.router, prefix="/api/v1", tags=["Data"])
 app.include_router(projects.router, prefix="/api/v1/assets", tags=["Assets"])
@@ -100,7 +105,6 @@ async def health():
 @app.get("/ui", response_class=HTMLResponse)
 async def serve_ui():
     """Serves a premium chat frontend UI to test and interact with Walter AI."""
-    import os
     template_path = os.path.join(os.path.dirname(__file__), "app/templates/chat_ui.html")
     with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
