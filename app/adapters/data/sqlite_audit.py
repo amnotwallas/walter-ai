@@ -1,3 +1,4 @@
+from typing import Optional
 import aiosqlite
 from app.domain.ports.audit import AuditPort
 
@@ -52,8 +53,8 @@ class SqliteAuditAdapter(AuditPort):
             await db.commit()
 
     async def log_tool_execution(
-        self, id: str, conversation_id: str, tool_name: str,
-        args: str, result: str, latency_ms: float
+        self, id: str, conversation_id: Optional[str] = None, tool_name: str = "",
+        args: str = "", result: str = "", latency_ms: float = 0.0
     ) -> None:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("PRAGMA foreign_keys = ON;")

@@ -5,6 +5,7 @@ import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
 from app.domain.ports.data import DataProviderPort
+from app.domain.ports.audit import AuditPort
 from app.domain.models.schemas import AgentAction
 import app.core.metrics as _metrics
 
@@ -20,9 +21,10 @@ class AgentService:
     _sessions = {}
     MAX_ITERATIONS = 5
 
-    def __init__(self, llm: LLMClientPort, data_provider: DataProviderPort):
+    def __init__(self, llm: LLMClientPort, data_provider: DataProviderPort, audit: AuditPort = None):
         self.llm = llm
         self.data_provider = data_provider
+        self.audit = audit
 
     # =========================
     # DATA CONTEXT
@@ -162,7 +164,22 @@ class AgentService:
 
             logger.info(f"Executing Tool: {function_name} | Args: {function_args}")
             _metrics.tool_calls_total.labels(tool_name=function_name).inc()
+            
+            import time as _time
+            t0 = _time.time()
             result = await tool_registry.execute(function_name, **function_args)
+            latency_ms = (_time.time() - t0) * 1000
+
+            if self.audit:
+                import uuid as _uuid
+                await self.audit.log_tool_execution(
+                    id=str(_uuid.uuid4()),
+                    conversation_id=None,  # se llenará al conectar con conversation_id en el futuro
+                    tool_name=function_name,
+                    args=str(function_args),
+                    result=str(result)[:500],
+                    latency_ms=round(latency_ms, 2),
+                )
             
             # Post-process for structured actions
             try:
@@ -309,6 +326,15 @@ class AgentService:
                     formatted_history.append({"role": "assistant", "content": full_response})
                     await self._save_session_history(session_id, formatted_history)
 
+                if self.audit:
+                    import uuid as _uuid
+                    await self.audit.log_conversation(
+                        id=str(_uuid.uuid4()),
+                        session_id=session_id or "anonymous",
+                        query=user_query,
+                        response=full_response,
+                    )
+
                 return {
                     "message": full_response,
                     "actions": actions
@@ -415,6 +441,15 @@ class AgentService:
                     formatted_history.append({"role": "user", "content": user_query})
                     formatted_history.append({"role": "assistant", "content": full_response})
                     await self._save_session_history(session_id, formatted_history)
+
+                if self.audit:
+                    import uuid as _uuid
+                    await self.audit.log_conversation(
+                        id=str(_uuid.uuid4()),
+                        session_id=session_id or "anonymous",
+                        query=user_query,
+                        response=full_response,
+                    )
 
             except Exception as e:
                 error_msg = str(e)

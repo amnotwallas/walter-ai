@@ -10,6 +10,7 @@ from app.adapters.controllers.v1 import chat, portfolio, projects
 from app.core.config import get_settings
 from app.core.logger import ServerLogger, trace_id_var
 from app.core.security import limiter
+from app.core.dependencies import get_audit
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -24,6 +25,14 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.on_event("startup")
+async def startup():
+    if os.getenv("VERCEL") != "1":
+        audit = get_audit()
+        if audit is not None:
+            await audit.init_db()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

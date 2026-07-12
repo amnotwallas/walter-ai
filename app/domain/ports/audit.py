@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 
 class AuditPort(ABC):
@@ -7,8 +8,8 @@ class AuditPort(ABC):
 
     @abstractmethod
     async def log_tool_execution(
-        self, id: str, conversation_id: str, tool_name: str,
-        args: str, result: str, latency_ms: float
+        self, id: str, conversation_id: Optional[str] = None, tool_name: str = "",
+        args: str = "", result: str = "", latency_ms: float = 0.0
     ) -> None: ...
 
     @abstractmethod
