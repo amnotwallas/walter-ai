@@ -54,7 +54,7 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def __init__(self):
-        super().__init__()
+        super().__init__(self.FORMAT)
 
     def format(self, record):
         """Optimized format that injects attributes into the record instead of creating new formatters."""
