@@ -12,7 +12,7 @@ _data_provider = JSONDataLoaderAdapter()
 if os.getenv("VERCEL") == "1":
     _audit_adapter = None
 else:
-    _audit_adapter = SqliteAuditAdapter(db_path="audit.db")
+    _audit_adapter = SqliteAuditAdapter(db_path=os.getenv("AUDIT_DB_PATH", "audit.db"))
 
 _agent_service = AgentService(llm=_llm_adapter, data_provider=_data_provider, audit=_audit_adapter)
 

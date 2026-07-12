@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+audit.db
+server.log
+.git/
+tests/
+docs/
+grafana/
+*.md
+.gitignore
+docker-compose*.yml
+prometheus.yml
+Dockerfile

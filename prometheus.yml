@@ -4,5 +4,5 @@ global:
 scrape_configs:
   - job_name: "walter-ai"
     static_configs:
-      - targets: ["host.docker.internal:8000"]
+      - targets: ["walter-api:8000"]
     metrics_path: /metrics
