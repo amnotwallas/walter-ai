@@ -183,8 +183,6 @@ class AgentService:
                 }
                 if tool_logs is not None:
                     tool_logs.append(log_data)
-                else:
-                    await self.audit.log_tool_execution(**log_data)
             
             # Post-process for structured actions
             try:

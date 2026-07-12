@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Optional, Any
 import litellm
 import app.core.metrics as _metrics
@@ -14,6 +15,7 @@ class LiteLLMAdapter(LLMClientPort):
     """
     _instance = None
     _consecutive_failures: int = 0
+    _lock: asyncio.Lock = asyncio.Lock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -50,20 +52,25 @@ class LiteLLMAdapter(LLMClientPort):
             kwargs["tool_choice"] = tool_choice
         try:
             response = await litellm.acompletion(**kwargs)
-            LiteLLMAdapter._consecutive_failures = 0
+            async with LiteLLMAdapter._lock:
+                LiteLLMAdapter._consecutive_failures = 0
         except Exception as e:
-            LiteLLMAdapter._consecutive_failures += 1
-            settings = get_settings()
-            if (
-                settings.llm_fallback
-                and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
-            ):
+            should_fallback = False
+            async with LiteLLMAdapter._lock:
+                LiteLLMAdapter._consecutive_failures += 1
+                settings = get_settings()
+                if (
+                    settings.llm_fallback
+                    and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
+                ):
+                    should_fallback = True
+                    LiteLLMAdapter._consecutive_failures = 0
+            if should_fallback:
                 _metrics.llm_fallback_total.inc()
                 logger.warning(
                     f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
                 )
                 kwargs["model"] = settings.llm_fallback
-                LiteLLMAdapter._consecutive_failures = 0
                 response = await litellm.acompletion(**kwargs)
             else:
                 raise

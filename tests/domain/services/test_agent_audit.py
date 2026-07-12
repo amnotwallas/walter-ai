@@ -76,24 +76,26 @@ async def test_call_tool_logs_tool_execution():
         mock_registry.tools = {"get_personal_info": True}
         mock_registry.execute = AsyncMock(return_value="tool_result")
         
-        # Test with default conversation_id (None)
-        await agent._call_tool(tool_call, [])
+        # Tool logs are always buffered; direct audit write was removed (C2 fix)
+        tool_logs = []
+        await agent._call_tool(tool_call, [], tool_logs=tool_logs)
         
-        audit_mock.log_tool_execution.assert_called_once()
-        called_kwargs = audit_mock.log_tool_execution.call_args.kwargs
-        assert called_kwargs["conversation_id"] is None
-        assert called_kwargs["tool_name"] == "get_personal_info"
-        assert called_kwargs["args"] == "{'arg1': 'val1'}"
-        assert called_kwargs["result"] == "tool_result"
-        assert isinstance(called_kwargs["latency_ms"], float)
-        assert "id" in called_kwargs
+        # Verify buffered, not directly written
+        audit_mock.log_tool_execution.assert_not_called()
+        assert len(tool_logs) == 1
+        log = tool_logs[0]
+        assert log["conversation_id"] is None
+        assert log["tool_name"] == "get_personal_info"
+        assert log["args"] == "{'arg1': 'val1'}"
+        assert log["result"] == "tool_result"
+        assert isinstance(log["latency_ms"], float)
+        assert "id" in log
 
         # Test with explicit conversation_id
-        audit_mock.log_tool_execution.reset_mock()
-        await agent._call_tool(tool_call, [], conversation_id="test-conv-id")
-        audit_mock.log_tool_execution.assert_called_once()
-        called_kwargs = audit_mock.log_tool_execution.call_args.kwargs
-        assert called_kwargs["conversation_id"] == "test-conv-id"
+        tool_logs2 = []
+        await agent._call_tool(tool_call, [], conversation_id="test-conv-id", tool_logs=tool_logs2)
+        assert tool_logs2[0]["conversation_id"] == "test-conv-id"
+
 
 
 @pytest.mark.asyncio

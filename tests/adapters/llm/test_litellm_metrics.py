@@ -3,6 +3,13 @@ import pytest
 from app.adapters.llm.litellm_adapter import LiteLLMAdapter
 
 
+@pytest.fixture(autouse=True)
+def reset_consecutive_failures():
+    LiteLLMAdapter._consecutive_failures = 0
+    yield
+    LiteLLMAdapter._consecutive_failures = 0
+
+
 @pytest.mark.asyncio
 async def test_get_completion_increments_token_metrics():
     adapter = LiteLLMAdapter()
