@@ -43,7 +43,7 @@ class ColoredFormatter(logging.Formatter):
     RESET = "\x1b[0m"
     
     # Static format string to avoid re-creation
-    FORMAT = "%(color)s%(trace_prefix)s[%(levelname)s] %(name)s: %(message)s%(reset)s"
+    FORMAT = "%(color)s%(trace_prefix)s%(message)s%(reset)s"
 
     LEVEL_COLORS = {
         logging.DEBUG: GREY,
