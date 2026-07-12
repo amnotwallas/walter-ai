@@ -47,7 +47,6 @@ async def log_requests(request: Request, call_next):
         logging.info(
             f"{request.method} {request.url.path} completed in {process_time:.2f}ms | Status: {response.status_code}",
             extra={
-                "trace_id": trace_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
@@ -63,7 +62,6 @@ async def log_requests(request: Request, call_next):
             f"{request.method} {request.url.path} failed in {process_time:.2f}ms | Error: {e}",
             exc_info=True,
             extra={
-                "trace_id": trace_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": 500,

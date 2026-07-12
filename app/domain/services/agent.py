@@ -147,10 +147,6 @@ class AgentService:
     async def _call_tool(self, tool_call, actions_list: list, conversation_id: str = None, tool_logs: list = None):
         function_name = tool_call.function.name
 
-        if function_name not in tool_registry.tools:
-            logger.error(f"Tool not found: {function_name}")
-            return f"Error: Tool '{function_name}' is not available."
-
         try:
             raw_args = tool_call.function.arguments
             

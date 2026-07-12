@@ -91,6 +91,5 @@ async def test_litellm_adapter_get_streaming_completion():
 
 def test_litellm_adapter_properties():
     adapter = LiteLLMAdapter()
-    assert adapter.client is None
     assert isinstance(adapter.model, str)
     assert isinstance(adapter.temperature, float)

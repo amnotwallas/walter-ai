@@ -12,7 +12,7 @@ class JsonFormatter(logging.Formatter):
     """Custom formatter for structured JSON output."""
     def format(self, record):
         log_record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "name": record.name,
             "message": record.getMessage(),
@@ -54,7 +54,7 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def __init__(self):
-        super().__init__(self.FORMAT)
+        super().__init__()
 
     def format(self, record):
         """Optimized format that injects attributes into the record instead of creating new formatters."""

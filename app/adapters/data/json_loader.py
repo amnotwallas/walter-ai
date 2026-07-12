@@ -1,14 +1,11 @@
 import os
 import json
-import hashlib
 from typing import Any, Optional
 from app.core.logger import get_logger
 from app.domain.ports.data import DataProviderPort
 from app.domain.models.schemas import PortfolioData
 
 logger = get_logger(__name__)
-
-ALLOWED_SECTIONS = {"projects", "work", "education", "skills", "basics"}
 
 class JSONDataLoaderAdapter(DataProviderPort):
     """
@@ -22,11 +19,10 @@ class JSONDataLoaderAdapter(DataProviderPort):
             cls._instance = super().__new__(cls)
             cls._instance._data = None
             cls._instance._last_mtime = 0
-            cls._instance._data_dir = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                "data"
+            cls._instance._file_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "data", "data.json"
             )
-            cls._instance._file_path = os.path.join(cls._instance._data_dir, "data.json")
         return cls._instance
 
     def load_all(self):
@@ -71,9 +67,6 @@ class JSONDataLoaderAdapter(DataProviderPort):
         """
         if default is None:
             default = []
-
-        if key not in ALLOWED_SECTIONS:
-            return json.dumps(default)
 
         data = self.get_data()
         if not data:
