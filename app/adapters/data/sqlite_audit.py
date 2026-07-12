@@ -87,7 +87,7 @@ class SqliteAuditAdapter(AuditPort):
             """) as cursor:
                 high_failure = [row[0] async for row in cursor]
 
-            # Sesiones con tokens altos (via query length como proxy)
+            # Sesiones lentas (cuya latencia total supera 3x el promedio)
             async with db.execute("""
                 SELECT session_id, SUM(latency_ms) as total_latency
                 FROM tool_executions te

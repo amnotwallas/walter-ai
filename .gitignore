@@ -225,3 +225,8 @@ __marimo__/
 
 # Local LLM Config
 app/config/config.yml
+
+# Local SQLite Audit Database
+audit.db
+audit.db-journal
+

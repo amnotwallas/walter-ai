@@ -1,4 +1,7 @@
 import json
+import re
+import time
+import uuid
 from app.domain.ports.llm import LLMClientPort
 from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
@@ -141,7 +144,7 @@ class AgentService:
     # TOOL EXECUTION
     # =========================
 
-    async def _call_tool(self, tool_call, actions_list: list):
+    async def _call_tool(self, tool_call, actions_list: list, conversation_id: str = None, tool_logs: list = None):
         function_name = tool_call.function.name
 
         if function_name not in tool_registry.tools:
@@ -165,21 +168,23 @@ class AgentService:
             logger.info(f"Executing Tool: {function_name} | Args: {function_args}")
             _metrics.tool_calls_total.labels(tool_name=function_name).inc()
             
-            import time as _time
-            t0 = _time.time()
+            t0 = time.time()
             result = await tool_registry.execute(function_name, **function_args)
-            latency_ms = (_time.time() - t0) * 1000
+            latency_ms = (time.time() - t0) * 1000
 
             if self.audit:
-                import uuid as _uuid
-                await self.audit.log_tool_execution(
-                    id=str(_uuid.uuid4()),
-                    conversation_id=None,  # se llenará al conectar con conversation_id en el futuro
-                    tool_name=function_name,
-                    args=str(function_args),
-                    result=str(result)[:500],
-                    latency_ms=round(latency_ms, 2),
-                )
+                log_data = {
+                    "id": str(uuid.uuid4()),
+                    "conversation_id": conversation_id,
+                    "tool_name": function_name,
+                    "args": str(function_args),
+                    "result": str(result)[:500],
+                    "latency_ms": round(latency_ms, 2),
+                }
+                if tool_logs is not None:
+                    tool_logs.append(log_data)
+                else:
+                    await self.audit.log_tool_execution(**log_data)
             
             # Post-process for structured actions
             try:
@@ -201,7 +206,7 @@ class AgentService:
     # CONVERSATION PREP
     # =========================
 
-    def _check_input_guardrails(self, query: str) -> bool:
+    async def _check_input_guardrails(self, query: str) -> bool:
         """
         Validates user input against common prompt injection, system override attempts,
         excessive lengths, and format injection anomalies.
@@ -214,9 +219,14 @@ class AgentService:
         if len(query) > 300:
             logger.warning("GUARDRAIL_TRIGGERED: Query blocked due to excessive length.")
             _metrics.security_blocks_total.labels(reason="length").inc()
+            if self.audit:
+                await self.audit.log_security_event(
+                    id=str(uuid.uuid4()),
+                    reason="length",
+                    query_snippet=query[:100]
+                )
             return False
 
-        import re
         query_lower = query.lower()
 
         # 2. Bilingual semantic patterns (verb + control noun combinations)
@@ -231,6 +241,12 @@ class AgentService:
             if re.search(pattern, query_lower):
                 logger.warning(f"GUARDRAIL_TRIGGERED: Blocked by pattern match '{pattern}'")
                 _metrics.security_blocks_total.labels(reason="injection").inc()
+                if self.audit:
+                    await self.audit.log_security_event(
+                        id=str(uuid.uuid4()),
+                        reason="injection",
+                        query_snippet=query[:100]
+                    )
                 return False
 
         # 3. Formatting anomaly detection (prevents template injection payloads)
@@ -238,6 +254,12 @@ class AgentService:
         if special_chars_count > 10:
             logger.warning("GUARDRAIL_TRIGGERED: Too many formatting/structured characters.")
             _metrics.security_blocks_total.labels(reason="format").inc()
+            if self.audit:
+                await self.audit.log_security_event(
+                    id=str(uuid.uuid4()),
+                    reason="format",
+                    query_snippet=query[:100]
+                )
             return False
 
         return True
@@ -278,13 +300,15 @@ class AgentService:
     # =========================
 
     async def get_response(self, user_query: str, history: list = None, session_id: str = None, context=None) -> dict:
-        if not self._check_input_guardrails(user_query):
+        if not await self._check_input_guardrails(user_query):
             return {
                 "message": "Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄",
                 "actions": []
             }
 
         _metrics.active_sessions.inc()
+        conv_id = str(uuid.uuid4())
+        tool_logs = []
         try:
             messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
             actions = []
@@ -307,7 +331,7 @@ class AgentService:
 
                     messages.append(response_message)
                     for tool_call in tool_calls:
-                        function_response = await self._call_tool(tool_call, actions)
+                        function_response = await self._call_tool(tool_call, actions, conv_id, tool_logs=tool_logs)
                         messages.append({
                             "tool_call_id": tool_call.id,
                             "role": "tool",
@@ -327,13 +351,14 @@ class AgentService:
                     await self._save_session_history(session_id, formatted_history)
 
                 if self.audit:
-                    import uuid as _uuid
                     await self.audit.log_conversation(
-                        id=str(_uuid.uuid4()),
+                        id=conv_id,
                         session_id=session_id or "anonymous",
                         query=user_query,
                         response=full_response,
                     )
+                    for log in tool_logs:
+                        await self.audit.log_tool_execution(**log)
 
                 return {
                     "message": full_response,
@@ -364,11 +389,13 @@ class AgentService:
             yield "data: {\"message\": \"WALTER-AI_READY\", \"actions\": []}\n\n"
             return
 
-        if not self._check_input_guardrails(user_query):
+        if not await self._check_input_guardrails(user_query):
             yield f"data: {json.dumps({'message': 'Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄', 'actions': []})}\n\n"
             return
 
         _metrics.active_sessions.inc()
+        conv_id = str(uuid.uuid4())
+        tool_logs = []
         try:
             messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
             actions = []
@@ -422,7 +449,7 @@ class AgentService:
 
                         proxy = ToolCallProxy(tc_data)
                         logger.debug(f"Calling tool {tc_data['function']['name']} with args: {tc_data['function']['arguments']}")
-                        function_response = await self._call_tool(proxy, actions)
+                        function_response = await self._call_tool(proxy, actions, conv_id, tool_logs=tool_logs)
                         messages.append({
                             "tool_call_id": tc_data["id"],
                             "role": "tool",
@@ -443,13 +470,14 @@ class AgentService:
                     await self._save_session_history(session_id, formatted_history)
 
                 if self.audit:
-                    import uuid as _uuid
                     await self.audit.log_conversation(
-                        id=str(_uuid.uuid4()),
+                        id=conv_id,
                         session_id=session_id or "anonymous",
                         query=user_query,
                         response=full_response,
                     )
+                    for log in tool_logs:
+                        await self.audit.log_tool_execution(**log)
 
             except Exception as e:
                 error_msg = str(e)

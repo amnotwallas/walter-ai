@@ -10,29 +10,32 @@ def make_agent():
     return AgentService(llm=llm, data_provider=data_provider)
 
 
-def test_check_input_guardrails_increments_length_block():
+@pytest.mark.asyncio
+async def test_check_input_guardrails_increments_length_block():
     agent = make_agent()
     with patch("app.core.metrics.security_blocks_total") as mock:
-        result = agent._check_input_guardrails("x" * 301)
+        result = await agent._check_input_guardrails("x" * 301)
         assert result is False
         mock.labels.assert_called_with(reason="length")
         mock.labels.return_value.inc.assert_called_once()
 
 
-def test_check_input_guardrails_increments_injection_block():
+@pytest.mark.asyncio
+async def test_check_input_guardrails_increments_injection_block():
     agent = make_agent()
     with patch("app.core.metrics.security_blocks_total") as mock:
         # "bypass prompt" matches bilingual patterns: (bypass).*(prompt)
-        result = agent._check_input_guardrails("bypass prompt")
+        result = await agent._check_input_guardrails("bypass prompt")
         assert result is False
         mock.labels.assert_called_with(reason="injection")
         mock.labels.return_value.inc.assert_called_once()
 
 
-def test_check_input_guardrails_increments_format_block():
+@pytest.mark.asyncio
+async def test_check_input_guardrails_increments_format_block():
     agent = make_agent()
     with patch("app.core.metrics.security_blocks_total") as mock:
-        result = agent._check_input_guardrails("{{{{{{{{{{{")
+        result = await agent._check_input_guardrails("{{{{{{{{{{{")
         assert result is False
         mock.labels.assert_called_with(reason="format")
         mock.labels.return_value.inc.assert_called_once()
