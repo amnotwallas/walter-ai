@@ -46,6 +46,17 @@ class Settings(BaseSettings):
         val = llm_config.get("temperature")
         return float(val) if val is not None else 0.5
 
+    @property
+    def llm_fallback(self) -> str:
+        llm_config = _load_llm_yaml().get("llm") or {}
+        return llm_config.get("fallback") or ""
+
+    @property
+    def llm_max_failures(self) -> int:
+        llm_config = _load_llm_yaml().get("llm") or {}
+        val = llm_config.get("max_failures")
+        return int(val) if val is not None else 3
+
 @lru_cache()
 def get_settings():
     """
