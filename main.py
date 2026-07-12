@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.adapters.controllers.v1 import chat, portfolio, projects
+from app.adapters.controllers.v1 import chat, portfolio, projects, insights
 from app.core.config import get_settings
 from app.core.logger import ServerLogger, trace_id_var
 from app.core.security import limiter
@@ -92,6 +92,7 @@ if os.getenv("VERCEL") != "1":
 app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
 app.include_router(portfolio.router, prefix="/api/v1", tags=["Data"])
 app.include_router(projects.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(insights.router, prefix="/api/v1", tags=["AIOps"])
 
 @app.get("/")
 async def root():
