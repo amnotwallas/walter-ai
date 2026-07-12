@@ -6,6 +6,7 @@ from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
 from app.domain.ports.data import DataProviderPort
 from app.domain.models.schemas import AgentAction
+import app.core.metrics as _metrics
 
 logger = get_logger(__name__)
 
@@ -160,6 +161,7 @@ class AgentService:
                     function_args = {}
 
             logger.info(f"Executing Tool: {function_name} | Args: {function_args}")
+            _metrics.tool_calls_total.labels(tool_name=function_name).inc()
             result = await tool_registry.execute(function_name, **function_args)
             
             # Post-process for structured actions
@@ -194,6 +196,7 @@ class AgentService:
         # 1. Length guardrail (portfolio questions should be relatively brief)
         if len(query) > 300:
             logger.warning("GUARDRAIL_TRIGGERED: Query blocked due to excessive length.")
+            _metrics.security_blocks_total.labels(reason="length").inc()
             return False
 
         import re
@@ -210,12 +213,14 @@ class AgentService:
         for pattern in suspicious_patterns:
             if re.search(pattern, query_lower):
                 logger.warning(f"GUARDRAIL_TRIGGERED: Blocked by pattern match '{pattern}'")
+                _metrics.security_blocks_total.labels(reason="injection").inc()
                 return False
 
         # 3. Formatting anomaly detection (prevents template injection payloads)
         special_chars_count = len(re.findall(r"[{}\[\]<>/\\#*_]", query))
         if special_chars_count > 10:
             logger.warning("GUARDRAIL_TRIGGERED: Too many formatting/structured characters.")
+            _metrics.security_blocks_total.labels(reason="format").inc()
             return False
 
         return True
@@ -262,57 +267,61 @@ class AgentService:
                 "actions": []
             }
 
-        messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
-        actions = []
-        iterations = 0
-
+        _metrics.active_sessions.inc()
         try:
-            while iterations < self.MAX_ITERATIONS:
-                response = await self.llm.get_completion(
-                    messages=messages,
-                    tools=tool_registry.schemas,
-                    tool_choice="auto"
-                )
+            messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
+            actions = []
+            iterations = 0
 
-                response_message = response.choices[0].message
-                tool_calls = response_message.tool_calls
+            try:
+                while iterations < self.MAX_ITERATIONS:
+                    response = await self.llm.get_completion(
+                        messages=messages,
+                        tools=tool_registry.schemas,
+                        tool_choice="auto"
+                    )
 
-                if not tool_calls:
-                    full_response = response_message.content or ""
-                    break
+                    response_message = response.choices[0].message
+                    tool_calls = response_message.tool_calls
 
-                messages.append(response_message)
-                for tool_call in tool_calls:
-                    function_response = await self._call_tool(tool_call, actions)
-                    messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_call.function.name,
-                        "content": function_response,
-                    })
-                
-                iterations += 1
-            else:
-                logger.warning("Max tool iterations reached")
-                full_response = "I'm sorry, I encountered an internal loop while processing your request."
+                    if not tool_calls:
+                        full_response = response_message.content or ""
+                        break
 
-            if session_id:
-                formatted_history = self._format_history(current_history)
-                formatted_history.append({"role": "user", "content": user_query})
-                formatted_history.append({"role": "assistant", "content": full_response})
-                await self._save_session_history(session_id, formatted_history)
+                    messages.append(response_message)
+                    for tool_call in tool_calls:
+                        function_response = await self._call_tool(tool_call, actions)
+                        messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": tool_call.function.name,
+                            "content": function_response,
+                        })
+                    
+                    iterations += 1
+                else:
+                    logger.warning("Max tool iterations reached")
+                    full_response = "I'm sorry, I encountered an internal loop while processing your request."
 
-            return {
-                "message": full_response,
-                "actions": actions
-            }
+                if session_id:
+                    formatted_history = self._format_history(current_history)
+                    formatted_history.append({"role": "user", "content": user_query})
+                    formatted_history.append({"role": "assistant", "content": full_response})
+                    await self._save_session_history(session_id, formatted_history)
 
-        except Exception as e:
-            logger.error(f"Error in AgentService.get_response: {str(e)}")
-            return {
-                "message": f"Sorry, I'm having trouble connecting: {str(e)}",
-                "actions": []
-            }
+                return {
+                    "message": full_response,
+                    "actions": actions
+                }
+
+            except Exception as e:
+                logger.error(f"Error in AgentService.get_response: {str(e)}")
+                return {
+                    "message": f"Sorry, I'm having trouble connecting: {str(e)}",
+                    "actions": []
+                }
+        finally:
+            _metrics.active_sessions.dec()
 
     # =========================
     # STREAMING
@@ -333,86 +342,90 @@ class AgentService:
             yield f"data: {json.dumps({'message': 'Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄', 'actions': []})}\n\n"
             return
 
-        messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
-        actions = []
-        full_response = ""
-        iterations = 0
-
+        _metrics.active_sessions.inc()
         try:
-            while iterations < self.MAX_ITERATIONS:
-                stream = await self.llm.get_streaming_completion(
-                    messages=messages,
-                    tools=tool_registry.schemas,
-                    tool_choice="auto"
-                )
+            messages, current_history = self._prepare_conversation(user_query, history, session_id, context)
+            actions = []
+            full_response = ""
+            iterations = 0
 
-                tool_calls_data = []
-                is_tool_call = False
-                current_chunk_response = ""
+            try:
+                while iterations < self.MAX_ITERATIONS:
+                    stream = await self.llm.get_streaming_completion(
+                        messages=messages,
+                        tools=tool_registry.schemas,
+                        tool_choice="auto"
+                    )
 
-                async for chunk in stream:
-                    delta = chunk.choices[0].delta
+                    tool_calls_data = []
+                    is_tool_call = False
+                    current_chunk_response = ""
 
-                    if delta.tool_calls:
-                        is_tool_call = True
-                        for tc in delta.tool_calls:
-                            index = tc.index
-                            while len(tool_calls_data) <= index:
-                                tool_calls_data.append({"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
-                            if tc.id: tool_calls_data[index]["id"] = tc.id
-                            if tc.function:
-                                if tc.function.name: tool_calls_data[index]["function"]["name"] += tc.function.name
-                                if tc.function.arguments: tool_calls_data[index]["function"]["arguments"] += tc.function.arguments
+                    async for chunk in stream:
+                        delta = chunk.choices[0].delta
 
-                    elif delta.content:
-                        content = delta.content
-                        current_chunk_response += content
-                        full_response += content
-                        yield f"data: {json.dumps({'message': content, 'actions': []})}\n\n"
+                        if delta.tool_calls:
+                            is_tool_call = True
+                            for tc in delta.tool_calls:
+                                index = tc.index
+                                while len(tool_calls_data) <= index:
+                                    tool_calls_data.append({"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                                if tc.id: tool_calls_data[index]["id"] = tc.id
+                                if tc.function:
+                                    if tc.function.name: tool_calls_data[index]["function"]["name"] += tc.function.name
+                                    if tc.function.arguments: tool_calls_data[index]["function"]["arguments"] += tc.function.arguments
 
-                if not is_tool_call:
-                    break
+                        elif delta.content:
+                            content = delta.content
+                            current_chunk_response += content
+                            full_response += content
+                            yield f"data: {json.dumps({'message': content, 'actions': []})}\n\n"
 
-                # Execute tools
-                messages.append({"role": "assistant", "tool_calls": tool_calls_data})
-                logger.debug(f"Executing {len(tool_calls_data)} tool calls: {[tc['function']['name'] for tc in tool_calls_data]}")
+                    if not is_tool_call:
+                        break
+
+                    # Execute tools
+                    messages.append({"role": "assistant", "tool_calls": tool_calls_data})
+                    logger.debug(f"Executing {len(tool_calls_data)} tool calls: {[tc['function']['name'] for tc in tool_calls_data]}")
+                    
+                    for tc_data in tool_calls_data:
+                        class ToolCallProxy:
+                            def __init__(self, data):
+                                self.id = data["id"]
+                                self.function = type('FunctionProxy', (object,), data["function"])
+
+                        proxy = ToolCallProxy(tc_data)
+                        logger.debug(f"Calling tool {tc_data['function']['name']} with args: {tc_data['function']['arguments']}")
+                        function_response = await self._call_tool(proxy, actions)
+                        messages.append({
+                            "tool_call_id": tc_data["id"],
+                            "role": "tool",
+                            "name": tc_data["function"]["name"],
+                            "content": function_response,
+                        })
+                    
+                    iterations += 1
                 
-                for tc_data in tool_calls_data:
-                    class ToolCallProxy:
-                        def __init__(self, data):
-                            self.id = data["id"]
-                            self.function = type('FunctionProxy', (object,), data["function"])
+                # Send final actions if any
+                if actions:
+                    yield f"data: {json.dumps({'message': '', 'actions': actions})}\n\n"
 
-                    proxy = ToolCallProxy(tc_data)
-                    logger.debug(f"Calling tool {tc_data['function']['name']} with args: {tc_data['function']['arguments']}")
-                    function_response = await self._call_tool(proxy, actions)
-                    messages.append({
-                        "tool_call_id": tc_data["id"],
-                        "role": "tool",
-                        "name": tc_data["function"]["name"],
-                        "content": function_response,
-                    })
-                
-                iterations += 1
-            
-            # Send final actions if any
-            if actions:
-                yield f"data: {json.dumps({'message': '', 'actions': actions})}\n\n"
+                if session_id:
+                    formatted_history = self._format_history(current_history)
+                    formatted_history.append({"role": "user", "content": user_query})
+                    formatted_history.append({"role": "assistant", "content": full_response})
+                    await self._save_session_history(session_id, formatted_history)
 
-            if session_id:
-                formatted_history = self._format_history(current_history)
-                formatted_history.append({"role": "user", "content": user_query})
-                formatted_history.append({"role": "assistant", "content": full_response})
-                await self._save_session_history(session_id, formatted_history)
-
-        except Exception as e:
-            error_msg = str(e)
-            if "failed_generation" in error_msg:
-                logger.error(f"GROQ_TOOL_CALL_ERROR: {error_msg}")
-                yield f"data: {json.dumps({'message': 'I encountered a technical glitch while trying to use my tools. Let me try again without them.', 'actions': []})}\n\n"
-            else:
-                logger.error(f"SYSTEM_FAILURE: {error_msg}")
-                yield f"data: {json.dumps({'message': f'ERROR: {error_msg}', 'actions': []})}\n\n"
+            except Exception as e:
+                error_msg = str(e)
+                if "failed_generation" in error_msg:
+                    logger.error(f"GROQ_TOOL_CALL_ERROR: {error_msg}")
+                    yield f"data: {json.dumps({'message': 'I encountered a technical glitch while trying to use my tools. Let me try again without them.', 'actions': []})}\n\n"
+                else:
+                    logger.error(f"SYSTEM_FAILURE: {error_msg}")
+                    yield f"data: {json.dumps({'message': f'ERROR: {error_msg}', 'actions': []})}\n\n"
+        finally:
+            _metrics.active_sessions.dec()
 
     # =========================
     # UTILS
