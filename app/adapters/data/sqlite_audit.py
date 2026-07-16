@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS security_events (
 class SqliteAuditAdapter(AuditPort):
     def __init__(self, db_path: str = "audit.db"):
         self.db_path = db_path
+        self.cache_ttl = 60
+        self._cached_anomalies = None
+        self._cache_expiry = 0.0
+        import asyncio
+        self._lock = asyncio.Lock()
 
     async def init_db(self) -> None:
         async with aiosqlite.connect(self.db_path) as db:
@@ -73,7 +78,7 @@ class SqliteAuditAdapter(AuditPort):
             )
             await db.commit()
 
-    async def get_anomalies(self) -> dict:
+    async def _fetch_anomalies_from_db(self) -> dict:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("PRAGMA foreign_keys = ON;")
             # Tools con error rate alto (result contiene 'Error')
@@ -114,3 +119,20 @@ class SqliteAuditAdapter(AuditPort):
             "slow_sessions": slow_sessions,
             "slow_tools": slow_tools,
         }
+
+    async def get_anomalies(self) -> dict:
+        import time
+        now = time.time()
+        if self._cached_anomalies is not None and now < self._cache_expiry:
+            return self._cached_anomalies
+
+        async with self._lock:
+            # Recheck after acquiring lock
+            now = time.time()
+            if self._cached_anomalies is not None and now < self._cache_expiry:
+                return self._cached_anomalies
+
+            anomalies = await self._fetch_anomalies_from_db()
+            self._cached_anomalies = anomalies
+            self._cache_expiry = now + self.cache_ttl
+            return anomalies

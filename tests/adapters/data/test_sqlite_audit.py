@@ -114,3 +114,30 @@ async def test_get_anomalies_logic(adapter):
     assert result["slow_tools"][0]["avg_ms"] == 500.0
     assert result["slow_tools"][1]["tool"] == "good_tool"
     assert result["slow_tools"][1]["avg_ms"] == 42.5
+
+@pytest.mark.asyncio
+async def test_get_anomalies_caching(adapter):
+    # Log initial data
+    await adapter.log_conversation("conv-1", "sess-1", "q1", "r1")
+    await adapter.log_tool_execution("t-1", "conv-1", "tool_a", "{}", "Success", 50.0)
+    
+    # First call - caches result
+    res1 = await adapter.get_anomalies()
+    assert len(res1["slow_tools"]) == 1
+    assert res1["slow_tools"][0]["tool"] == "tool_a"
+    
+    # Log new tool execution with higher latency
+    await adapter.log_tool_execution("t-2", "conv-1", "tool_b", "{}", "Success", 500.0)
+    
+    # Second call (immediate) - should return cached result (only tool_a)
+    res2 = await adapter.get_anomalies()
+    assert len(res2["slow_tools"]) == 1
+    assert res2["slow_tools"][0]["tool"] == "tool_a"
+    
+    # Expire cache manually
+    adapter._cache_expiry = 0.0
+    
+    # Third call (after expiry) - should hit DB and return updated result (tool_b as slowest)
+    res3 = await adapter.get_anomalies()
+    assert len(res3["slow_tools"]) == 2
+    assert res3["slow_tools"][0]["tool"] == "tool_b"
