@@ -55,7 +55,7 @@ walter-ai/
 │   ├── config/         # YAML configuration files (config.yml)
 │   ├── core/           # Environment setup, security, dependencies, and logging
 │   ├── data/           # Portfolio data (data.json) and project assets
-│   ├── domain/         # Pydantic models, ports (interfaces), and the orchestrator
+│   ├── domain/         # Pydantic models and the orchestrator service
 │   ├── templates/      # Chat testing UI (chat_ui.html)
 │   └── tools/          # Agent tool definitions and registry (CV Tools)
 ├── tests/              # Unit and integration test suite
