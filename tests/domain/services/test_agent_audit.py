@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.domain.services.agent import AgentService
-from app.domain.ports.audit import AuditPort
+from app.adapters.data.sqlite_audit import SqliteAuditAdapter
 
 def make_agent(audit_mock=None):
     llm = AsyncMock()
@@ -11,13 +11,13 @@ def make_agent(audit_mock=None):
 
 @pytest.mark.asyncio
 async def test_agent_service_accepts_audit_param():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
     assert agent.audit == audit_mock
 
 @pytest.mark.asyncio
 async def test_get_response_logs_conversation():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
     
     # Mock LLM completion to return a simple response
@@ -39,7 +39,7 @@ async def test_get_response_logs_conversation():
 
 @pytest.mark.asyncio
 async def test_get_streaming_response_logs_conversation():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
     
     # Mock LLM streaming completion
@@ -65,7 +65,7 @@ async def test_get_streaming_response_logs_conversation():
 
 @pytest.mark.asyncio
 async def test_call_tool_logs_tool_execution():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
     
     tool_call = MagicMock()
@@ -100,7 +100,7 @@ async def test_call_tool_logs_tool_execution():
 
 @pytest.mark.asyncio
 async def test_get_response_propagates_conversation_id_to_tool_execution():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
     
     # Mock LLM completion to return a tool call first, then a text response
@@ -140,7 +140,7 @@ async def test_get_response_propagates_conversation_id_to_tool_execution():
 
 @pytest.mark.asyncio
 async def test_guardrail_blocks_log_security_event():
-    audit_mock = AsyncMock(spec=AuditPort)
+    audit_mock = AsyncMock(spec=SqliteAuditAdapter)
     agent = make_agent(audit_mock)
 
     # 1. Test excessive length block

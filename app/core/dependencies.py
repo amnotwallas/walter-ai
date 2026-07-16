@@ -4,7 +4,6 @@ from app.adapters.llm.litellm_adapter import LiteLLMAdapter
 from app.adapters.data.json_loader import JSONDataLoaderAdapter
 from app.domain.services.agent import AgentService
 from app.adapters.data.sqlite_audit import SqliteAuditAdapter
-from app.domain.ports.audit import AuditPort
 
 _llm_adapter = LiteLLMAdapter()
 _data_provider = JSONDataLoaderAdapter()
@@ -21,5 +20,5 @@ def get_agent_service() -> AgentService:
     return _agent_service
 
 
-def get_audit() -> Optional[AuditPort]:
+def get_audit() -> Optional[SqliteAuditAdapter]:
     return _audit_adapter

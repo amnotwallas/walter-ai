@@ -1,6 +1,5 @@
 from typing import Optional
 import aiosqlite
-from app.domain.ports.audit import AuditPort
 
 CREATE_CONVERSATIONS = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -31,7 +30,7 @@ CREATE TABLE IF NOT EXISTS security_events (
 )"""
 
 
-class SqliteAuditAdapter(AuditPort):
+class SqliteAuditAdapter:
     def __init__(self, db_path: str = "audit.db"):
         self.db_path = db_path
         self.cache_ttl = 60

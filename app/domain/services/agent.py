@@ -2,13 +2,13 @@ import json
 import re
 import time
 import uuid
-from app.domain.ports.llm import LLMClientPort
+from app.adapters.llm.litellm_adapter import LiteLLMAdapter
 from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
 from app.core.logger import get_logger
-from app.domain.ports.data import DataProviderPort
-from app.domain.ports.audit import AuditPort
+from app.adapters.data.json_loader import JSONDataLoaderAdapter
+from app.adapters.data.sqlite_audit import SqliteAuditAdapter
 from app.domain.models.schemas import AgentAction
 import app.core.metrics as _metrics
 
@@ -24,7 +24,7 @@ class AgentService:
     _sessions = {}
     MAX_ITERATIONS = 5
 
-    def __init__(self, llm: LLMClientPort, data_provider: DataProviderPort, audit: AuditPort = None):
+    def __init__(self, llm: LiteLLMAdapter, data_provider: JSONDataLoaderAdapter, audit: SqliteAuditAdapter = None):
         self.llm = llm
         self.data_provider = data_provider
         self.audit = audit

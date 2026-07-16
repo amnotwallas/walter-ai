@@ -2,14 +2,13 @@ import os
 import json
 from typing import Any, Optional
 from app.core.logger import get_logger
-from app.domain.ports.data import DataProviderPort
 from app.domain.models.schemas import PortfolioData
 
 logger = get_logger(__name__)
 
-class JSONDataLoaderAdapter(DataProviderPort):
+class JSONDataLoaderAdapter:
     """
-    Concrete data loader adapter implementing DataProviderPort for JSON files.
+    Concrete data loader adapter for JSON files.
     Implements Singleton pattern.
     """
     _instance = None

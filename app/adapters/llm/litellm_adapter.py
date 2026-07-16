@@ -4,13 +4,11 @@ import litellm
 import app.core.metrics as _metrics
 from app.core.config import get_settings
 from app.core.logger import get_logger
-from app.domain.ports.llm import LLMClientPort
-
 logger = get_logger(__name__)
 
-class LiteLLMAdapter(LLMClientPort):
+class LiteLLMAdapter:
     """
-    Concrete adapter implementing the LLMClientPort using LiteLLM.
+    Concrete adapter using LiteLLM.
     """
     _consecutive_failures: int = 0
     _lock: asyncio.Lock = asyncio.Lock()
