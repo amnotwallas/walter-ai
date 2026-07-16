@@ -10,6 +10,7 @@ async def adapter(tmp_path):
     adapter = SqliteAuditAdapter(db_path=db_path)
     await adapter.init_db()
     yield adapter
+    await adapter.engine.dispose()
 
 
 @pytest.mark.asyncio

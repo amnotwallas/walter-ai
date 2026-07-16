@@ -19,6 +19,8 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=0.9.1",
     "prometheus-client>=0.20.0",
     "aiosqlite>=0.20.0",
+    "sqlalchemy>=2.0.51",
+    "greenlet>=3.5.3",
 ]
 
 [tool.pytest.ini_options]
