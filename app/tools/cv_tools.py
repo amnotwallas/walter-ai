@@ -1,6 +1,5 @@
 import os
 import json
-import httpx
 from app.adapters.data.json_loader import data_provider
 from app.tools.registry import tool_registry
 
