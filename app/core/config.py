@@ -1,10 +1,11 @@
 import os
 import pathlib
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List, Any
 import dotenv
 import yaml
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator, field_validator
 
 # Load dotenv at start to export keys to os.environ for LiteLLM
 dotenv.load_dotenv()
@@ -34,6 +35,36 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+
+    CORS_ORIGINS: Any = ["https://amnotwallas.github.io", "http://localhost:4200"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    import json
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    @model_validator(mode="after")
+    def validate_llm_keys(self) -> 'Settings':
+        import sys
+        if "pytest" in sys.modules and os.getenv("FORCE_ENV_VALIDATION") != "1":
+            return self
+            
+        model = self.llm_model
+        if model.startswith("groq/") and not self.GROQ_API_KEY:
+            raise ValueError(f"Missing GROQ_API_KEY in environment for model '{model}'")
+        elif model.startswith("openai/") and not self.OPENAI_API_KEY:
+            raise ValueError(f"Missing OPENAI_API_KEY in environment for model '{model}'")
+        elif model.startswith("anthropic/") and not self.ANTHROPIC_API_KEY:
+            raise ValueError(f"Missing ANTHROPIC_API_KEY in environment for model '{model}'")
+        return self
 
     @property
     def llm_model(self) -> str:
