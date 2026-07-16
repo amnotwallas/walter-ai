@@ -24,7 +24,6 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY main.py .
 COPY app/ app/
-COPY data/ data/
 
 # Use venv python
 ENV PATH="/app/.venv/bin:$PATH" \
