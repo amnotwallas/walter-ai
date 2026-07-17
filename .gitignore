@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Evaluation report
+eval_report.md
+
 #superpowers
 docs/superpowers
 
