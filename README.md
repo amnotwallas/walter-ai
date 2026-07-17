@@ -172,11 +172,19 @@ PYTHONPATH=. make test
 ```
 
 ### Run LLM Evaluation Pipeline:
-To run the automated LLM response validation and navigation action checks:
+To run the automated LLM response validation and UI navigation action checks locally:
 ```bash
 uv run python scripts/evaluator.py
 ```
-This script evaluates the model against the test dataset defined in `scripts/eval_dataset.json` (testing navigation actions, data accuracy, and guardrails). It uses a Groq model as an LLM-as-a-judge to grade the outputs, and generates a markdown summary report saved to `eval_report.md`.
+This runs the dataset defined in `scripts/eval_dataset.json` through a double-layer validator (deterministic checks + LLM-as-a-judge) and outputs `eval_report.md`:
+
+```mermaid
+graph TD
+    Dataset[scripts/eval_dataset.json] -->|Run cases| Agent[AgentService]
+    Agent -->|Validate actions| DetCheck{Deterministic Check}
+    Agent -->|Validate response| LLM-as-a-Judge{LLM-as-a-Judge}
+    DetCheck & LLM-as-a-Judge -->|Generate report| Report[eval_report.md]
+```
 
 ---
 
