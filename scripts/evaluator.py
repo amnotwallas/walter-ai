@@ -116,9 +116,13 @@ async def main():
     
     print(f"Running LLM evaluation on {len(EVAL_DATASET)} test cases...")
     
-    # Run tests concurrently to leverage Groq speed
-    tasks = [evaluate_case(case, agent, llm) for case in EVAL_DATASET]
-    results = await asyncio.gather(*tasks)
+    # Run tests sequentially with a 2-second delay to avoid hitting Groq's Rate Limits (TPM/RPM)
+    results = []
+    for i, case in enumerate(EVAL_DATASET, start=1):
+        print(f"[{i}/{len(EVAL_DATASET)}] Evaluating: '{case['query']}'")
+        res = await evaluate_case(case, agent, llm)
+        results.append(res)
+        await asyncio.sleep(2.0)
     
     passed_count = sum(1 for r in results if r["passed"])
     total_count = len(results)
