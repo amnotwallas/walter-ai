@@ -1,5 +1,5 @@
 llm:
-  model: groq/openai/gpt-oss-120b
+  model: groq/llama-3.3-70b-versatile
   fallback: openai/gpt-4o-mini
   max_failures: 3
   temperature: 0.5
