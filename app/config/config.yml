@@ -1,5 +1,5 @@
 llm:
-  model: llama-3.1-8b-instant
+  model: groq/llama-3.1-8b-instant
   fallback: openai/gpt-4o-mini
   max_failures: 3
   temperature: 0.5
