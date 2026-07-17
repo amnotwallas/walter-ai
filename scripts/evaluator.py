@@ -105,6 +105,13 @@ async def main():
         print("Warning: GROQ_API_KEY is not set or is dummy. Evaluation will run but LLM judge might fail.")
         
     agent = get_agent_service()
+    
+    # Initialize the audit database if enabled to prevent missing table errors
+    from app.core.dependencies import get_audit
+    audit = get_audit()
+    if audit is not None:
+        await audit.init_db()
+        
     llm = LiteLLMAdapter()
     
     print(f"Running LLM evaluation on {len(EVAL_DATASET)} test cases...")
