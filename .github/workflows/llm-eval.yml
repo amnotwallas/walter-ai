@@ -46,3 +46,10 @@ jobs:
       with:
         header: llm-evaluation-report
         path: eval_report.md
+
+    - name: Upload Evaluation Report as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: llm-evaluation-report
+        path: eval_report.md
+
