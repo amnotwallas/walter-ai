@@ -1,6 +1,9 @@
 import os
 import sys
 
+# Add project root to sys.path to allow importing from the 'app' module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Set default env variables for Pydantic validation before importing dependencies
 os.environ.setdefault("API_KEY", "local_test_key_123")
 os.environ.setdefault("GROQ_API_KEY", "dummy_groq_key")
