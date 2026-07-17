@@ -4,6 +4,9 @@ import sys
 # Add project root to sys.path to allow importing from the 'app' module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import dotenv
+dotenv.load_dotenv()
+
 # Set default env variables for Pydantic validation before importing dependencies
 os.environ.setdefault("API_KEY", "local_test_key_123")
 os.environ.setdefault("GROQ_API_KEY", "dummy_groq_key")
@@ -116,13 +119,13 @@ async def main():
     
     print(f"Running LLM evaluation on {len(EVAL_DATASET)} test cases...")
     
-    # Run tests sequentially with a 2-second delay to avoid hitting Groq's Rate Limits (TPM/RPM)
+    # Run tests sequentially with a 5-second delay to avoid hitting Groq's Rate Limits (TPM/RPM)
     results = []
     for i, case in enumerate(EVAL_DATASET, start=1):
         print(f"[{i}/{len(EVAL_DATASET)}] Evaluating: '{case['query']}'")
         res = await evaluate_case(case, agent, llm)
         results.append(res)
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(5.0)
     
     passed_count = sum(1 for r in results if r["passed"])
     total_count = len(results)
