@@ -36,6 +36,7 @@ jobs:
         # Pass required API keys for LiteLLM validation and Groq judge calls
         API_KEY: ${{ secrets.Eval_API_KEY }}
         GROQ_API_KEY: ${{ secrets.Eval_GROQ_API_KEY }}
+        PYTHONPATH: .
       run: |
         uv run python scripts/evaluator.py
 
