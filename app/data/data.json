@@ -162,12 +162,12 @@
       "id": "walter-ai",
       "slug": "walter-ai",
       "name": "WALTER-AI",
-      "description": "Multiagent orchestration engine for AI powered interactions.",
-      "long_description": "Multiagent orchestration engine for AI powered interactions. Built around a master orchestrator that dynamically executes tools to retrieve structured portfolio data. Supports streaming responses via server sent events with execution logs.",
+      "description": "Multi-agent orchestration engine with clean architecture, strict tool-calling safety, and automated LLM-as-a-judge evaluation.",
+      "long_description": "An advanced multi-agent orchestrator acting as the backend engine for Walter's portfolio. Built with Python and FastAPI following Clean Architecture, it coordinates specialized agents using LiteLLM to dynamically query data. Includes a robust prompt-injection guardrail layer, real-time Server-Sent Events (SSE) chat streaming, and an automated CI/CD evaluation pipeline with an LLM-as-a-judge scoring system.",
       "image": "/assets/Walter_AI/WalterAI.png",
       "images": ["/assets/Walter_AI/WalterAI.png"],
 
-      "stack": ["FastAPI", "Python", "Llama 3.1", "SSE"],
+      "stack": ["FastAPI", "Python", "LiteLLM", "SSE", "Pydantic", "GitHub Actions"],
       "period": "2026-04",
       "links": {
         "github": "https://github.com/amnotwallas/walter-ai",
@@ -177,8 +177,8 @@
         "status": "IN PRODUCTION",
         "role": "BACKEND & AI ENGINEER",
         "complexity": "VERY HIGH",
-        "challenges": "Managing state across specialized agents and ensuring reliable tool calls.",
-        "solutions": "Supervisor pattern and strict Pydantic validation."
+        "challenges": "Ensuring strictly validated JSON responses from Llama models under tool-use constraints, preventing prompt-injection attacks, and avoiding provider rate limits during bulk automated runs.",
+        "solutions": "Removed pseudo-code examples from prompts, built a regex-based bilingual guardrail layer, implemented exponential backoff logic, and built a double-layer CI/CD evaluator combining deterministic checks with an LLM-as-a-judge."
       }
     }
   ],
