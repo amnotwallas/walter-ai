@@ -1,0 +1,48 @@
+name: LLM Evaluation Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 1 * *'  # Monthly (Day 1 of each month at 00:00 UTC)
+  workflow_dispatch:      # Enable manual run from GitHub actions tab
+
+jobs:
+  evaluate:
+    name: Run LLM Evaluation & MLOps Judge
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required permission to publish/sticky PR comments
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        
+    - name: Install uv package manager
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+    - name: Sync dependencies
+      run: |
+        uv sync
+        
+    - name: Run LLM Evaluation Script
+      env:
+        # Pass required API keys for LiteLLM validation and Groq judge calls
+        API_KEY: ${{ secrets.Eval_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.Eval_GROQ_API_KEY }}
+      run: |
+        uv run python scripts/evaluator.py
+
+    - name: Post or Update PR Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      # Only run this step if the pipeline is triggered by a pull_request
+      if: github.event_name == 'pull_request'
+      with:
+        header: llm-evaluation-report
+        path: eval_report.md
