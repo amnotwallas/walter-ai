@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,22 +18,23 @@ from slowapi.errors import RateLimitExceeded
 ServerLogger.setup()
 settings = get_settings()
 
-app = FastAPI(
-    title="WALTER-AI_API",
-    description="AI Backend for Walter Ambriz's Portfolio",
-    version=settings.APP_VERSION
-)
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     if os.getenv("VERCEL") != "1":
         audit = get_audit()
         if audit is not None:
             await audit.init_db()
+    yield
+
+app = FastAPI(
+    title="WALTER-AI_API",
+    description="AI Backend for Walter Ambriz's Portfolio",
+    version=settings.APP_VERSION,
+    lifespan=lifespan
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
