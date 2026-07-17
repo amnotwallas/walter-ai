@@ -9,6 +9,7 @@ import asyncio
 import json
 from app.core.dependencies import get_agent_service
 from app.adapters.llm.litellm_adapter import LiteLLMAdapter
+from app.domain.models.schemas import ChatContext, ChatMessage
 
 # Load evaluation dataset from JSON file
 def load_dataset() -> list:
@@ -25,8 +26,19 @@ async def evaluate_case(case, agent, llm) -> dict:
     query = case["query"]
     expected = case["expected_action"]
     
+    # Parse context and history Pydantic schemas if present in the test case
+    context_data = case.get("context")
+    context_obj = ChatContext(**context_data) if context_data else None
+    
+    history_data = case.get("history")
+    history_list = [ChatMessage(**m) for m in history_data] if history_data else None
+    
     # 1. Execute agent response
-    response = await agent.get_response(query)
+    response = await agent.get_response(
+        user_query=query,
+        history=history_list,
+        context=context_obj
+    )
     actual_msg = response["message"]
     actions = response["actions"]
     

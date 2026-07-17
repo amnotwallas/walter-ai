@@ -45,9 +45,28 @@
     "criteria": "Response must invite the user to look at Walter's projects list and navigate to PROJECTS."
   },
   {
-    "query": "Tell me about his portfolio agent project.",
-    "expected_action": "PROJECTS",
-    "criteria": "Response must describe the 'walter-ai-neural-core' project or portfolio AI agent details."
+    "query": "Tell me about this project.",
+    "context": {
+      "page": "project_details",
+      "project_slug": "walter-ai"
+    },
+    "expected_action": null,
+    "criteria": "Response must identify the current project in context as 'walter-ai' (the portfolio AI agent) and describe its features."
+  },
+  {
+    "query": "What technologies does it use?",
+    "history": [
+      {
+        "role": "user",
+        "content": "Tell me about the walter-ai project."
+      },
+      {
+        "role": "assistant",
+        "content": "walter-ai is an advanced multi-agent orchestrator built with FastAPI and LiteLLM."
+      }
+    ],
+    "expected_action": null,
+    "criteria": "Response must identify 'it' as the walter-ai project and list Python, FastAPI, LiteLLM, or Pydantic."
   },
   {
     "query": "Do you have any projects related to FastAPI or Python?",
