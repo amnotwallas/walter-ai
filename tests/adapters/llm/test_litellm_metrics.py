@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from app.adapters.llm.litellm_adapter import LiteLLMAdapter
+from app.adapters.llm.litellm_adapter import LiteLLMAdapter, _parse_provider_model
 
 
 @pytest.fixture(autouse=True)
@@ -8,6 +8,16 @@ def reset_consecutive_failures():
     LiteLLMAdapter._consecutive_failures = 0
     yield
     LiteLLMAdapter._consecutive_failures = 0
+
+
+def test_parse_provider_model():
+    p, m = _parse_provider_model("groq/meta-llama/llama-4")
+    assert p == "groq"
+    assert m == "meta-llama/llama-4"
+
+    p, m = _parse_provider_model("gpt-4o")
+    assert p == "unknown"
+    assert m == "gpt-4o"
 
 
 @pytest.mark.asyncio
@@ -25,7 +35,27 @@ async def test_get_completion_increments_token_metrics():
 
 
 @pytest.mark.asyncio
-async def test_get_completion_fallback_trigger_and_metrics():
+async def test_get_completion_retries_and_metrics():
+    adapter = LiteLLMAdapter()
+    mock_usage = MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+    mock_response = MagicMock()
+    mock_response.usage = mock_usage
+
+    with patch("litellm.acompletion", new_callable=AsyncMock) as mock_acompletion, \
+         patch("app.core.metrics.llm_retries_total") as mock_retries, \
+         patch("app.core.metrics.llm_failures_total") as mock_failures:
+        
+        mock_acompletion.side_effect = [Exception("Temporary Error"), mock_response]
+        res = await adapter.get_completion(messages=[{"role": "user", "content": "hi"}])
+
+        assert res == mock_response
+        assert mock_acompletion.call_count == 2
+        assert mock_retries.labels.call_count >= 1
+        assert mock_failures.labels.call_count >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_completion_fallback_trigger_and_circuit_breaker():
     adapter = LiteLLMAdapter()
     LiteLLMAdapter._consecutive_failures = 0
 
@@ -48,26 +78,62 @@ async def test_get_completion_fallback_trigger_and_metrics():
     with patch("litellm.acompletion", new_callable=AsyncMock) as mock_acompletion, \
          patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings), \
          patch("app.core.metrics.llm_fallback_total") as mock_fallback_counter, \
-         patch("app.core.metrics.llm_tokens_total") as mock_token_counter:
+         patch("app.core.metrics.llm_circuit_breaker_active") as mock_circuit_breaker:
 
         mock_acompletion.side_effect = acompletion_side_effect
 
-        with pytest.raises(Exception, match="API Error 1"):
-            await adapter.get_completion(messages=[{"role": "user", "content": "hi"}])
-        assert LiteLLMAdapter._consecutive_failures == 1
+        response = await adapter.get_completion(
+            messages=[{"role": "user", "content": "hi"}],
+            max_retries=4
+        )
 
-        with pytest.raises(Exception, match="API Error 2"):
-            await adapter.get_completion(messages=[{"role": "user", "content": "hi"}])
-        assert LiteLLMAdapter._consecutive_failures == 2
-
-        response = await adapter.get_completion(messages=[{"role": "user", "content": "hi"}])
-        
         assert response == mock_response
         assert LiteLLMAdapter._consecutive_failures == 0
         mock_fallback_counter.inc.assert_called_once()
-        
+        assert mock_circuit_breaker.labels.call_count >= 1
+
         assert mock_acompletion.call_count == 4
         called_kwargs = mock_acompletion.call_args_list[3][1]
         assert called_kwargs["model"] == "openai/gpt-4o-mini"
-        assert mock_token_counter.labels.call_count >= 1
 
+
+@pytest.mark.asyncio
+async def test_get_completion_failed_logs_and_raises():
+    adapter = LiteLLMAdapter()
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=Exception("Fatal API Error")), \
+         patch("app.adapters.llm.litellm_adapter.logger.error") as mock_logger_error:
+        with pytest.raises(Exception, match="Fatal API Error"):
+            await adapter.get_completion(messages=[{"role": "user", "content": "hi"}], max_retries=2)
+        
+        mock_logger_error.assert_called_once()
+        args, kwargs = mock_logger_error.call_args
+        assert "llm_completion_failed" in args[0]
+        assert kwargs["extra"]["event"] == "llm_completion_failed"
+
+
+@pytest.mark.asyncio
+async def test_get_streaming_completion_ttft():
+    adapter = LiteLLMAdapter()
+    messages = [{"role": "user", "content": "Hello"}]
+
+    class MockChunk:
+        def __init__(self, usage=None):
+            self.usage = usage
+
+    async def mock_stream():
+        yield MockChunk()
+        yield MockChunk(MagicMock(prompt_tokens=5, completion_tokens=10, total_tokens=15))
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_stream()), \
+         patch("app.adapters.llm.litellm_adapter.logger.info") as mock_logger_info:
+        
+        stream_gen = await adapter.get_streaming_completion(messages)
+        chunks = [c async for c in stream_gen]
+        assert len(chunks) == 2
+
+        mock_logger_info.assert_called_once()
+        args, kwargs = mock_logger_info.call_args
+        assert "LLM stream completed" in args[0]
+        assert kwargs["extra"]["event"] == "llm_completion_success"
+        assert kwargs["extra"]["ttft"] is not None
+        assert kwargs["extra"]["total_latency"] >= 0

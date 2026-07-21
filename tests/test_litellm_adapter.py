@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, ANY
 from app.adapters.llm.litellm_adapter import LiteLLMAdapter
 
 @pytest.mark.asyncio
@@ -29,17 +29,17 @@ async def test_litellm_adapter_get_completion():
         mock_acompletion.assert_called_once_with(
             model=adapter.model,
             messages=messages,
-            temperature=0.7
+            temperature=0.7,
+            timeout=30.0
         )
-        mock_logger_info.assert_called_once_with(
-            f"LLM completion successful | Tokens: {10} in, {20} out (total: {30})",
-            extra={
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-                "model": adapter.model
-            }
-        )
+        mock_logger_info.assert_called_once()
+        args, kwargs = mock_logger_info.call_args
+        assert "LLM completion successful" in args[0]
+        assert kwargs["extra"]["input_tokens"] == 10
+        assert kwargs["extra"]["output_tokens"] == 20
+        assert kwargs["extra"]["total_tokens"] == 30
+        assert kwargs["extra"]["model"] == adapter.model
+        assert kwargs["extra"]["event"] == "llm_completion_success"
 
 @pytest.mark.asyncio
 async def test_litellm_adapter_get_streaming_completion():
@@ -77,17 +77,17 @@ async def test_litellm_adapter_get_streaming_completion():
             messages=messages,
             temperature=0.7,
             stream=True,
-            stream_options={"include_usage": True}
+            stream_options={"include_usage": True},
+            timeout=30.0
         )
-        mock_logger_info.assert_called_once_with(
-            f"LLM stream completed | Tokens: {5} in, {10} out (total: {15})",
-            extra={
-                "input_tokens": 5,
-                "output_tokens": 10,
-                "total_tokens": 15,
-                "model": adapter.model
-            }
-        )
+        mock_logger_info.assert_called_once()
+        args, kwargs = mock_logger_info.call_args
+        assert "LLM stream completed" in args[0]
+        assert kwargs["extra"]["input_tokens"] == 5
+        assert kwargs["extra"]["output_tokens"] == 10
+        assert kwargs["extra"]["total_tokens"] == 15
+        assert kwargs["extra"]["model"] == adapter.model
+        assert kwargs["extra"]["event"] == "llm_completion_success"
 
 def test_litellm_adapter_properties():
     adapter = LiteLLMAdapter()

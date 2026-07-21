@@ -27,3 +27,22 @@ tool_calls_total = Counter(
     "Agent tool calls dispatched",
     ["tool_name"],
 )
+
+llm_retries_total = Counter(
+    "llm_retries_total",
+    "Total LLM retry requests",
+    ["provider", "model"]
+)
+
+llm_failures_total = Counter(
+    "llm_failures_total",
+    "Total LLM completion failures",
+    ["provider", "model", "error_type"]
+)
+
+llm_circuit_breaker_active = Gauge(
+    "llm_circuit_breaker_active",
+    "Circuit breaker tripped status (1=active/tripped, 0=inactive)",
+    ["provider", "model"]
+)
+
