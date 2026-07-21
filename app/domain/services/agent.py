@@ -9,7 +9,7 @@ from app.domain.ports.audit import AuditPort
 from app.tools.registry import tool_registry
 import app.tools.cv_tools  # Trigger registration
 from app.core.prompts import SYSTEM_PROMPT
-from app.core.logger import get_logger
+from app.core.logger import get_logger, trace_id_var
 from app.domain.models.schemas import AgentAction
 import app.core.metrics as _metrics
 
@@ -294,7 +294,10 @@ class AgentService:
     # MAIN RESPONSE
     # =========================
 
-    async def get_response(self, user_query: str, history: list = None, session_id: str = None, context=None) -> dict:
+    async def get_response(self, user_query: str, history: list = None, session_id: str = None, context=None, trace_id: Optional[str] = None) -> dict:
+        if trace_id:
+            trace_id_var.set(trace_id)
+
         if not await self._check_input_guardrails(user_query):
             return {
                 "message": "Solo puedo hablar sobre el portafolio de Walter. ¿Te puedo mostrar algo de su trabajo? 😄",
@@ -373,7 +376,10 @@ class AgentService:
     # STREAMING
     # =========================
 
-    async def get_streaming_response(self, user_query: str, history: list = None, session_id: str = None, action: str = "chat", context=None):
+    async def get_streaming_response(self, user_query: str, history: list = None, session_id: str = None, action: str = "chat", context=None, trace_id: Optional[str] = None):
+        if trace_id:
+            trace_id_var.set(trace_id)
+
         history = history or []
 
         if action == "init":

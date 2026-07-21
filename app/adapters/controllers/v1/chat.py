@@ -4,6 +4,7 @@ from app.domain.models.schemas import ChatRequest, ChatResponse
 from app.domain.services.agent import AgentService
 from app.core.dependencies import get_agent_service
 from app.core.security import validate_api_key, limiter
+from app.core.logger import trace_id_var
 
 router = APIRouter()
 
@@ -21,7 +22,8 @@ async def chat(
         request_data.query, 
         request_data.history, 
         request_data.session_id,
-        request_data.context
+        request_data.context,
+        trace_id=trace_id_var.get()
     )
     return ChatResponse(**response_data)
 
@@ -41,7 +43,9 @@ async def chat_stream(
             request_data.history, 
             request_data.session_id,
             request_data.action,
-            request_data.context
+            request_data.context,
+            trace_id=trace_id_var.get()
         ),
         media_type="text/event-stream"
     )
+

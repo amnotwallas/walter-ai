@@ -176,3 +176,37 @@ async def test_agent_service_handles_null_arguments():
     import json
     data = json.loads(response)
     assert "basics" in data
+
+
+def test_trace_id_propagation():
+    """Verifica que el trace_id se propague correctamente desde las peticiones HTTP al AgentService."""
+    from app.core.logger import trace_id_var
+
+    payload = {"query": "Test trace propagation", "session_id": "test_trace"}
+
+    captured_trace_ids = []
+
+    def mock_get_response(query, history=None, session_id=None, context=None, trace_id=None):
+        captured_trace_ids.append(trace_id)
+        assert trace_id_var.get() == trace_id
+        return {"message": "ok", "actions": []}
+
+    def mock_get_streaming_response(query, history=None, session_id=None, action="chat", context=None, trace_id=None):
+        captured_trace_ids.append(trace_id)
+        assert trace_id_var.get() == trace_id
+        yield "data: ok\n\n"
+
+    with patch("app.domain.services.agent.AgentService.get_response", side_effect=mock_get_response):
+        resp = client.post("/api/v1/chat", json=payload, headers=HEADERS)
+        assert resp.status_code == 200
+        assert "X-Trace-ID" in resp.headers
+
+    with patch("app.domain.services.agent.AgentService.get_streaming_response", side_effect=mock_get_streaming_response):
+        resp_stream = client.post("/api/v1/chat/stream", json=payload, headers=HEADERS)
+        assert resp_stream.status_code == 200
+        assert "X-Trace-ID" in resp_stream.headers
+
+    assert len(captured_trace_ids) == 2
+    assert captured_trace_ids[0] is not None and captured_trace_ids[0] != "N/A"
+    assert captured_trace_ids[1] is not None and captured_trace_ids[1] != "N/A"
+
