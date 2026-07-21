@@ -21,8 +21,25 @@ class JsonFormatter(logging.Formatter):
         }
         # Extract dynamic metrics
         fields = [
-            "method", "path", "status_code", "latency_ms", 
-            "client_ip", "input_tokens", "output_tokens", "total_tokens"
+            "event",
+            "method",
+            "path",
+            "status_code",
+            "latency_ms",
+            "client_ip",
+            "session_id",
+            "provider",
+            "model",
+            "llm_latency_ms",
+            "time_to_first_token_ms",
+            "tool_name",
+            "tool_status",
+            "tool_latency_ms",
+            "retry_count",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "error_type",
         ]
         for field in fields:
             if hasattr(record, field):

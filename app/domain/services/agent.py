@@ -145,7 +145,7 @@ class AgentService:
     # TOOL EXECUTION
     # =========================
 
-    async def _call_tool(self, tool_call, actions_list: list, conversation_id: str = None, tool_logs: list = None):
+    async def _call_tool(self, tool_call, actions_list: list, conversation_id: str = None, tool_logs: list = None, session_id: str = None):
         function_name = tool_call.function.name
 
         try:
@@ -162,12 +162,31 @@ class AgentService:
                     logger.warning(f"Malformed JSON args for {function_name}: {raw_args}")
                     function_args = {}
 
-            logger.info(f"Executing Tool: {function_name} | Args: {function_args}")
+            logger.info(
+                f"Tool execution started: {function_name}",
+                extra={
+                    "event": "tool_execution_started",
+                    "session_id": session_id,
+                    "tool_name": function_name,
+                    "tool_status": "started",
+                }
+            )
             _metrics.tool_calls_total.labels(tool_name=function_name).inc()
             
             t0 = time.time()
             result = await tool_registry.execute(function_name, **function_args)
             latency_ms = (time.time() - t0) * 1000
+
+            logger.info(
+                f"Tool execution completed: {function_name}",
+                extra={
+                    "event": "tool_execution_completed",
+                    "session_id": session_id,
+                    "tool_name": function_name,
+                    "tool_status": "success",
+                    "tool_latency_ms": latency_ms,
+                }
+            )
 
             if self.audit:
                 log_data = {
@@ -194,7 +213,16 @@ class AgentService:
             return result
 
         except Exception as e:
-            logger.error(f"Error executing tool '{function_name}': {str(e)}")
+            logger.error(
+                f"Error executing tool '{function_name}': {str(e)}",
+                extra={
+                    "event": "tool_execution_failed",
+                    "session_id": session_id,
+                    "tool_name": function_name,
+                    "tool_status": "failed",
+                    "error_type": type(e).__name__,
+                }
+            )
             return f"Error: The action '{function_name}' failed."
 
     # =========================
@@ -329,7 +357,7 @@ class AgentService:
 
                     messages.append(response_message)
                     for tool_call in tool_calls:
-                        function_response = await self._call_tool(tool_call, actions, conv_id, tool_logs=tool_logs)
+                        function_response = await self._call_tool(tool_call, actions, conv_id, tool_logs=tool_logs, session_id=session_id)
                         messages.append({
                             "tool_call_id": tool_call.id,
                             "role": "tool",
@@ -450,7 +478,7 @@ class AgentService:
 
                         proxy = ToolCallProxy(tc_data)
                         logger.debug(f"Calling tool {tc_data['function']['name']} with args: {tc_data['function']['arguments']}")
-                        function_response = await self._call_tool(proxy, actions, conv_id, tool_logs=tool_logs)
+                        function_response = await self._call_tool(proxy, actions, conv_id, tool_logs=tool_logs, session_id=session_id)
                         messages.append({
                             "tool_call_id": tc_data["id"],
                             "role": "tool",
