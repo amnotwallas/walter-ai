@@ -20,10 +20,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.getenv("VERCEL") != "1":
-        audit = get_audit()
-        if audit is not None:
-            await audit.init_db()
+    audit = get_audit()
+    if audit is not None:
+        await audit.init_db()
     yield
 
 app = FastAPI(
@@ -83,8 +82,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.getenv("VERCEL") != "1":
-    Instrumentator().instrument(app).expose(app)
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(chat.router, prefix="/api/v1", tags=["AI"])
 app.include_router(portfolio.router, prefix="/api/v1", tags=["Data"])
