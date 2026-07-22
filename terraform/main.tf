@@ -78,6 +78,30 @@ resource "aws_security_group" "walter_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Prometheus UI"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+  }
+
+  ingress {
+    description = "Grafana UI"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+  }
+
+  ingress {
+    description = "Jaeger UI"
+    from_port   = 16686
+    to_port     = 16686
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -102,6 +126,15 @@ resource "aws_instance" "walter_instance" {
               #!/bin/bash
               set -e
               export DEBIAN_FRONTEND=noninteractive
+
+              # Enable 2GB of Swap Space to support the observability stack
+              if [ ! -f /swapfile ]; then
+                fallocate -l 2G /swapfile
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+                echo '/swapfile none swap sw 0 0' >> /etc/fstab
+              fi
 
               apt-get update -y
               apt-get install -y docker.io docker-compose git
