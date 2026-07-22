@@ -100,6 +100,9 @@ resource "aws_instance" "walter_instance" {
 
   user_data = <<-EOF
               #!/bin/bash
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+
               apt-get update -y
               apt-get install -y docker.io docker-compose-plugin git
               systemctl start docker
@@ -127,7 +130,8 @@ resource "aws_instance" "walter_instance" {
                   mkfs -t ext4 "$VOLUME_DEV"
                 fi
                 mount "$VOLUME_DEV" /data
-                echo "$VOLUME_DEV /data ext4 defaults,nofail 0 2" >> /etc/fstab
+                UUID=$(blkid -s UUID -o value "$VOLUME_DEV")
+                echo "UUID=$UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
               fi
               EOF
 
