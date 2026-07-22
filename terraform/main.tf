@@ -130,13 +130,16 @@ resource "aws_ebs_volume" "walter_volume" {
 }
 
 resource "aws_volume_attachment" "walter_volume_attach" {
-  device_name = "/dev/sdh" # Will expose on Linux as /dev/xvdf or similar
+  device_name = "/dev/sdf"
   volume_id   = aws_ebs_volume.walter_volume.id
   instance_id = aws_instance.walter_instance.id
 }
 
 resource "aws_eip" "walter_eip" {
   domain = "vpc"
+  tags = {
+    Name = "walter-ai-eip"
+  }
 }
 
 resource "aws_eip_association" "walter_eip_assoc" {
