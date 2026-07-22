@@ -42,7 +42,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    trace_id = str(uuid.uuid4())
+    trace_id = uuid.uuid4().hex
     start_time = time.time()
     
     # Set ContextVar trace ID
