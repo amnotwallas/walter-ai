@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.adapters.controllers.v1 import chat, portfolio, projects, insights
 from app.core.config import get_settings
-from app.core.logger import ServerLogger, trace_id_var
+from app.core.logger import ServerLogger, trace_id_var, _get_trace_id
 from app.core.security import limiter
 from app.core.dependencies import get_audit
 from slowapi import _rate_limit_exceeded_handler
@@ -23,9 +23,6 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_telemetry("walter-ai")
-    app.middleware_stack = None
-    FastAPIInstrumentor.instrument_app(app)
-    app.middleware_stack = app.build_middleware_stack()
     audit = get_audit()
     if audit is not None:
         await audit.init_db()
@@ -38,19 +35,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+FastAPIInstrumentor.instrument_app(app)
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    trace_id = uuid.uuid4().hex
+    local_trace_id = uuid.uuid4().hex
     start_time = time.time()
     
     # Set ContextVar trace ID
-    token = trace_id_var.set(trace_id)
+    token = trace_id_var.set(local_trace_id)
     try:
         response = await call_next(request)
         process_time = (time.time() - start_time) * 1000
+        trace_id = _get_trace_id()
+        if not trace_id or trace_id == "N/A":
+            trace_id = local_trace_id
         logging.info(
             f"{request.method} {request.url.path} completed in {process_time:.2f}ms | Status: {response.status_code}",
             extra={

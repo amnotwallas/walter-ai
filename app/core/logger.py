@@ -15,9 +15,12 @@ trace_id_var: ContextVar[str] = ContextVar("trace_id", default="N/A")
 
 def _get_trace_id() -> str:
     if trace is not None:
-        span = trace.get_current_span()
-        if span and span.get_span_context().is_valid:
-            return format(span.get_span_context().trace_id, "032x")
+        try:
+            span = trace.get_current_span()
+            if span and span.get_span_context().is_valid:
+                return format(span.get_span_context().trace_id, "032x")
+        except Exception:
+            pass
     return trace_id_var.get() or "N/A"
 
 class JsonFormatter(logging.Formatter):
