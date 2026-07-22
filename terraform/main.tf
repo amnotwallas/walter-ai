@@ -111,7 +111,7 @@ resource "aws_instance" "walter_instance" {
 
               # Wait for EBS volume to attach
               VOLUME_DEV=""
-              for i in {1..30}; do
+              for i in {1..60}; do
                 for dev in /dev/sdf /dev/xvdf /dev/nvme1n1 /dev/nvme2n1; do
                   if [ -b "$dev" ]; then
                     VOLUME_DEV="$dev"
@@ -126,9 +126,11 @@ resource "aws_instance" "walter_instance" {
                   mkfs -t ext4 "$VOLUME_DEV"
                 fi
                 mkdir -p /data
-                mount "$VOLUME_DEV" /data
+                mountpoint -q /data || mount "$VOLUME_DEV" /data
                 UUID=$(blkid -s UUID -o value "$VOLUME_DEV")
-                grep -q "/data" /etc/fstab || echo "UUID=$UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+                if [ -n "$UUID" ]; then
+                  grep -q '[[:space:]]/data[[:space:]]' /etc/fstab || echo "UUID=$UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+                fi
               else
                 echo "EBS attachment timeout" >&2
                 exit 1
