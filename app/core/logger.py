@@ -8,6 +8,16 @@ from contextvars import ContextVar
 
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="N/A")
 
+def _get_trace_id() -> str:
+    try:
+        from opentelemetry import trace
+        span = trace.get_current_span()
+        if span and span.get_span_context().is_valid:
+            return format(span.get_span_context().trace_id, "032x")
+    except ImportError:
+        pass
+    return trace_id_var.get() or "N/A"
+
 class JsonFormatter(logging.Formatter):
     """Custom formatter for structured JSON output."""
     def format(self, record):
@@ -17,7 +27,7 @@ class JsonFormatter(logging.Formatter):
             "name": record.name,
             "message": record.getMessage(),
             "module": record.module,
-            "trace_id": trace_id_var.get()
+            "trace_id": _get_trace_id()
         }
         # Extract dynamic metrics
         fields = [
@@ -77,7 +87,7 @@ class ColoredFormatter(logging.Formatter):
         """Optimized format that injects attributes into the record instead of creating new formatters."""
         record.color = self.LEVEL_COLORS.get(record.levelno, self.GREY)
         record.reset = self.RESET
-        trace_id = trace_id_var.get()
+        trace_id = _get_trace_id()
         record.trace_prefix = f"[{trace_id}] " if trace_id and trace_id != "N/A" else ""
         return super().format(record)
 

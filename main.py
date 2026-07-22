@@ -14,12 +14,15 @@ from app.core.security import limiter
 from app.core.dependencies import get_audit
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from app.core.telemetry import init_telemetry
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 ServerLogger.setup()
 settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_telemetry("walter-ai")
     audit = get_audit()
     if audit is not None:
         await audit.init_db()
@@ -31,6 +34,8 @@ app = FastAPI(
     version=settings.APP_VERSION,
     lifespan=lifespan
 )
+
+FastAPIInstrumentor.instrument_app(app)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
