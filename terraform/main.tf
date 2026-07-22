@@ -101,18 +101,34 @@ resource "aws_instance" "walter_instance" {
   user_data = <<-EOF
               #!/bin/bash
               apt-get update -y
-              apt-get install -y docker.io docker-compose git
+              apt-get install -y docker.io docker-compose-plugin git
               systemctl start docker
               systemctl enable docker
               
-              # Mount persistent EBS volume
               mkdir -p /data
-              # Format volume only if it does not have a filesystem
-              if ! blkid /dev/xvdf; then
-                mkfs -t ext4 /dev/xvdf
+              # Wait for EBS volume to attach
+              VOLUME_DEV=""
+              for i in {1..30}; do
+                if [ -b /dev/xvdf ]; then
+                  VOLUME_DEV="/dev/xvdf"
+                  break
+                elif [ -b /dev/nvme1n1 ]; then
+                  VOLUME_DEV="/dev/nvme1n1"
+                  break
+                elif [ -b /dev/nvme2n1 ]; then
+                  VOLUME_DEV="/dev/nvme2n1"
+                  break
+                fi
+                sleep 2
+              done
+
+              if [ -n "$VOLUME_DEV" ]; then
+                if ! blkid "$VOLUME_DEV"; then
+                  mkfs -t ext4 "$VOLUME_DEV"
+                fi
+                mount "$VOLUME_DEV" /data
+                echo "$VOLUME_DEV /data ext4 defaults,nofail 0 2" >> /etc/fstab
               fi
-              mount /dev/xvdf /data
-              echo '/dev/xvdf /data ext4 defaults,nofail 0 2' >> /etc/fstab
               EOF
 
   tags = {
