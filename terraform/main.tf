@@ -104,7 +104,7 @@ resource "aws_instance" "walter_instance" {
               export DEBIAN_FRONTEND=noninteractive
 
               apt-get update -y
-              apt-get install -y docker.io docker-compose-plugin git
+              apt-get install -y docker.io docker-compose git
               systemctl start docker
               systemctl enable docker
               ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
