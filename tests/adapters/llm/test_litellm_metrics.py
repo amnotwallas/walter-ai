@@ -230,3 +230,85 @@ async def test_streaming_error_does_not_log_success():
         mock_logger_info.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_get_completion_fallback_failure_raises_and_logs():
+    adapter = LiteLLMAdapter()
+    LiteLLMAdapter._consecutive_failures = 0
+    mock_settings = MagicMock(llm_fallback="openai/gpt-4o-mini", llm_max_failures=1)
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=[Exception("Primary Err"), Exception("Fallback Err")]), \
+         patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings), \
+         patch("app.adapters.llm.litellm_adapter.logger.error") as mock_logger_error:
+
+        with pytest.raises(Exception, match="Fallback Err"):
+            await adapter.get_completion(messages=[{"role": "user", "content": "hi"}], max_retries=2)
+
+        mock_logger_error.assert_called_with(
+            "llm_completion_failed | Fallback model openai/gpt-4o-mini failed: Fallback Err",
+            extra={
+                "event": "llm_completion_failed",
+                "model": "openai/gpt-4o-mini",
+                "provider": "openai",
+                "error": "Fallback Err",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_streaming_completion_fallback_failure_updates_kwargs():
+    adapter = LiteLLMAdapter()
+    LiteLLMAdapter._consecutive_failures = 0
+    mock_settings = MagicMock(llm_fallback="openai/gpt-4o-mini", llm_max_failures=1)
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=[Exception("Primary Err"), Exception("Fallback Err"), Exception("Retry Fallback Err")]) as mock_acompletion, \
+         patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings), \
+         patch("app.adapters.llm.litellm_adapter.logger.error") as mock_logger_error:
+
+        with pytest.raises(Exception):
+            await adapter.get_streaming_completion(messages=[{"role": "user", "content": "hi"}], max_retries=2)
+
+        # First attempt: primary model
+        assert mock_acompletion.call_args_list[0][1]["model"] == adapter.model
+        # Fallback call for first attempt
+        assert mock_acompletion.call_args_list[1][1]["model"] == "openai/gpt-4o-mini"
+        # Second attempt uses updated kwargs model (fallback)
+        assert mock_acompletion.call_args_list[2][1]["model"] == "openai/gpt-4o-mini"
+        mock_logger_error.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_streaming_midstream_failure_metrics_and_lock():
+    adapter = LiteLLMAdapter()
+    LiteLLMAdapter._consecutive_failures = 0
+    messages = [{"role": "user", "content": "Hello"}]
+
+    async def mock_error_stream():
+        yield MagicMock(usage=None)
+        raise RuntimeError("Stream broken mid-way")
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_error_stream()), \
+         patch("app.core.metrics.llm_failures_total") as mock_failures, \
+         patch("app.adapters.llm.litellm_adapter.logger.error") as mock_logger_error:
+
+        stream_gen = await adapter.get_streaming_completion(messages)
+        with pytest.raises(RuntimeError, match="Stream broken mid-way"):
+            async for _ in stream_gen:
+                pass
+
+        assert LiteLLMAdapter._consecutive_failures == 1
+        provider, model_name = _parse_provider_model(adapter.model)
+        mock_failures.labels.assert_called_with(
+            provider=provider, model=model_name, error_type="RuntimeError"
+        )
+        mock_logger_error.assert_called_with(
+            f"llm_completion_failed | Stream failed midstream for model {adapter.model}: Stream broken mid-way",
+            extra={
+                "event": "llm_completion_failed",
+                "model": adapter.model,
+                "provider": provider,
+                "error": "Stream broken mid-way",
+            },
+        )
+
+
+
