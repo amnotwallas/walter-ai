@@ -107,21 +107,17 @@ resource "aws_instance" "walter_instance" {
               apt-get install -y docker.io docker-compose-plugin git
               systemctl start docker
               systemctl enable docker
-              
-              mkdir -p /data
+              ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+
               # Wait for EBS volume to attach
               VOLUME_DEV=""
               for i in {1..30}; do
-                if [ -b /dev/xvdf ]; then
-                  VOLUME_DEV="/dev/xvdf"
-                  break
-                elif [ -b /dev/nvme1n1 ]; then
-                  VOLUME_DEV="/dev/nvme1n1"
-                  break
-                elif [ -b /dev/nvme2n1 ]; then
-                  VOLUME_DEV="/dev/nvme2n1"
-                  break
-                fi
+                for dev in /dev/sdf /dev/xvdf /dev/nvme1n1 /dev/nvme2n1; do
+                  if [ -b "$dev" ]; then
+                    VOLUME_DEV="$dev"
+                    break 2
+                  fi
+                done
                 sleep 2
               done
 
@@ -129,9 +125,13 @@ resource "aws_instance" "walter_instance" {
                 if ! blkid "$VOLUME_DEV"; then
                   mkfs -t ext4 "$VOLUME_DEV"
                 fi
+                mkdir -p /data
                 mount "$VOLUME_DEV" /data
                 UUID=$(blkid -s UUID -o value "$VOLUME_DEV")
-                echo "UUID=$UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+                grep -q "/data" /etc/fstab || echo "UUID=$UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+              else
+                echo "EBS attachment timeout" >&2
+                exit 1
               fi
               EOF
 
