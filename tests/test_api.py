@@ -210,3 +210,31 @@ def test_trace_id_propagation():
     assert captured_trace_ids[0] is not None and captured_trace_ids[0] != "N/A"
     assert captured_trace_ids[1] is not None and captured_trace_ids[1] != "N/A"
 
+
+@pytest.mark.asyncio
+async def test_agent_tool_call_telemetry_span():
+    """Verifica que _call_tool cree y use un span de OpenTelemetry para la llamada de la herramienta."""
+    from app.domain.services.agent import AgentService
+
+    mock_llm = MagicMock()
+    mock_data_provider = MagicMock()
+    agent = AgentService(llm=mock_llm, data_provider=mock_data_provider)
+
+    mock_tool_call = MagicMock()
+    mock_tool_call.function.name = "get_personal_info"
+    mock_tool_call.function.arguments = "{}"
+
+    mock_tracer = MagicMock()
+    mock_span_ctx = MagicMock()
+    mock_tracer.start_as_current_span.return_value = mock_span_ctx
+
+    with patch("app.domain.services.agent.trace") as mock_trace:
+        mock_trace.get_tracer.return_value = mock_tracer
+        mock_trace.get_current_span.return_value = MagicMock()
+
+        actions = []
+        await agent._call_tool(mock_tool_call, actions)
+
+        mock_trace.get_tracer.assert_called_with("walter-ai")
+        mock_tracer.start_as_current_span.assert_called_with("agent_tool_call")
+

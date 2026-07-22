@@ -8,6 +8,11 @@ import app.core.metrics as _metrics
 from app.core.config import get_settings
 from app.core.logger import get_logger
 
+try:
+    from opentelemetry import trace
+except ImportError:
+    trace = None
+
 logger = get_logger(__name__)
 
 
@@ -102,136 +107,158 @@ class LiteLLMAdapter(metaclass=LiteLLMMetaclass):
             current_model = kwargs.get("model", self.model)
             provider, model_name = _parse_provider_model(current_model)
 
+            tracer = trace.get_tracer("walter-ai") if trace is not None else None
+            span_ctx = None
+            if tracer is not None:
+                span_ctx = tracer.start_as_current_span("llm_completion")
+                span_ctx.__enter__()
+                span = trace.get_current_span()
+                if span:
+                    span.set_attribute("llm.model", current_model)
             try:
-                response = await litellm.acompletion(**kwargs)
-                latency = time.perf_counter() - start_time
-                async with self._get_lock():
-                    LiteLLMAdapter._consecutive_failures = 0
-                if current_model == primary_model:
-                    _metrics.llm_circuit_breaker_active.labels(
-                        provider=primary_provider, model=primary_model_name
-                    ).set(0)
-
-                usage = getattr(response, "usage", None)
-                if usage:
-                    logger.info(
-                        f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
-                        extra={
-                            "event": "llm_completion_success",
-                            "input_tokens": usage.prompt_tokens,
-                            "output_tokens": usage.completion_tokens,
-                            "total_tokens": usage.total_tokens,
-                            "model": current_model,
-                            "provider": provider,
-                            "latency": latency,
-                        },
-                    )
-                    _metrics.llm_tokens_total.labels(type="input").inc(usage.prompt_tokens)
-                    _metrics.llm_tokens_total.labels(type="output").inc(usage.completion_tokens)
-                else:
-                    logger.info(
-                        f"LLM completion successful | Latency: {latency:.3f}s",
-                        extra={
-                            "event": "llm_completion_success",
-                            "model": current_model,
-                            "provider": provider,
-                            "latency": latency,
-                        },
-                    )
-                return response
-
-            except Exception as e:
-                last_exception = e
-                should_fallback = False
-                async with self._get_lock():
-                    LiteLLMAdapter._consecutive_failures += 1
-                    settings = get_settings()
-                    if (
-                        settings.llm_fallback
-                        and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
-                    ):
-                        should_fallback = True
+                try:
+                    response = await litellm.acompletion(**kwargs)
+                    latency = time.perf_counter() - start_time
+                    async with self._get_lock():
                         LiteLLMAdapter._consecutive_failures = 0
+                    if current_model == primary_model:
+                        _metrics.llm_circuit_breaker_active.labels(
+                            provider=primary_provider, model=primary_model_name
+                        ).set(0)
 
-                _metrics.llm_failures_total.labels(
-                    provider=provider, model=model_name, error_type=type(e).__name__
-                ).inc()
-
-                if should_fallback:
-                    _metrics.llm_circuit_breaker_active.labels(
-                        provider=primary_provider, model=primary_model_name
-                    ).set(1)
-                    _metrics.llm_fallback_total.inc()
-                    logger.warning(
-                        f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
-                    )
-                    fallback_kwargs = kwargs.copy()
-                    fallback_kwargs["model"] = settings.llm_fallback
-                    fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
-                    try:
-                        response = await litellm.acompletion(**fallback_kwargs)
-                        latency = time.perf_counter() - start_time
-                        async with self._get_lock():
-                            LiteLLMAdapter._consecutive_failures = 0
-                        usage = getattr(response, "usage", None)
-                        if usage:
-                            logger.info(
-                                f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
-                                extra={
-                                    "event": "llm_completion_success",
-                                    "input_tokens": usage.prompt_tokens,
-                                    "output_tokens": usage.completion_tokens,
-                                    "total_tokens": usage.total_tokens,
-                                    "model": settings.llm_fallback,
-                                    "provider": fb_provider,
-                                    "latency": latency,
-                                },
-                            )
-                            _metrics.llm_tokens_total.labels(type="input").inc(usage.prompt_tokens)
-                            _metrics.llm_tokens_total.labels(type="output").inc(usage.completion_tokens)
-                        else:
-                            logger.info(
-                                f"LLM completion successful | Latency: {latency:.3f}s",
-                                extra={
-                                    "event": "llm_completion_success",
-                                    "model": settings.llm_fallback,
-                                    "provider": fb_provider,
-                                    "latency": latency,
-                                },
-                            )
-                        return response
-                    except Exception as fb_err:
-                        last_exception = fb_err
-                        _metrics.llm_failures_total.labels(
-                            provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
-                        ).inc()
-                        logger.error(
-                            f"llm_completion_failed | Fallback model {settings.llm_fallback} failed: {fb_err}",
+                    usage = getattr(response, "usage", None)
+                    if usage:
+                        logger.info(
+                            f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
                             extra={
-                                "event": "llm_completion_failed",
-                                "model": settings.llm_fallback,
-                                "provider": fb_provider,
-                                "error": str(fb_err),
+                                "event": "llm_completion_success",
+                                "input_tokens": usage.prompt_tokens,
+                                "output_tokens": usage.completion_tokens,
+                                "total_tokens": usage.total_tokens,
+                                "model": current_model,
+                                "provider": provider,
+                                "latency": latency,
                             },
                         )
-                        raise fb_err
+                        _metrics.llm_tokens_total.labels(type="input").inc(usage.prompt_tokens)
+                        _metrics.llm_tokens_total.labels(type="output").inc(usage.completion_tokens)
+                    else:
+                        logger.info(
+                            f"LLM completion successful | Latency: {latency:.3f}s",
+                            extra={
+                                "event": "llm_completion_success",
+                                "model": current_model,
+                                "provider": provider,
+                                "latency": latency,
+                            },
+                        )
+                    return response
+                except Exception as e:
+                    last_exception = e
+                    should_fallback = False
+                    async with self._get_lock():
+                        LiteLLMAdapter._consecutive_failures += 1
+                        settings = get_settings()
+                        if (
+                            settings.llm_fallback
+                            and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
+                        ):
+                            should_fallback = True
+                            LiteLLMAdapter._consecutive_failures = 0
 
-                if attempt < retries - 1:
-                    _metrics.llm_retries_total.labels(
-                        provider=provider, model=model_name
+                    _metrics.llm_failures_total.labels(
+                        provider=provider, model=model_name, error_type=type(e).__name__
                     ).inc()
-                    logger.warning(
-                        f"llm_retry_attempt | Attempt {attempt + 1}/{retries} failed for model {current_model}: {e}",
-                        extra={
-                            "event": "llm_retry_attempt",
-                            "attempt": attempt + 1,
-                            "model": current_model,
-                            "provider": provider,
-                            "error": str(e),
-                        },
-                    )
-                    backoff_delay = (2 ** attempt) * self._base_delay + random.uniform(0, 0.01)
-                    await asyncio.sleep(backoff_delay)
+
+                    if should_fallback:
+                        _metrics.llm_circuit_breaker_active.labels(
+                            provider=primary_provider, model=primary_model_name
+                        ).set(1)
+                        _metrics.llm_fallback_total.inc()
+                        logger.warning(
+                            f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
+                        )
+                        fallback_kwargs = kwargs.copy()
+                        fallback_kwargs["model"] = settings.llm_fallback
+                        fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
+                        fb_tracer = trace.get_tracer("walter-ai") if trace is not None else None
+                        fb_span_ctx = None
+                        if fb_tracer is not None:
+                            fb_span_ctx = fb_tracer.start_as_current_span("llm_completion")
+                            fb_span_ctx.__enter__()
+                            span = trace.get_current_span()
+                            if span:
+                                span.set_attribute("llm.model", settings.llm_fallback)
+                        try:
+                            response = await litellm.acompletion(**fallback_kwargs)
+                            latency = time.perf_counter() - start_time
+                            async with self._get_lock():
+                                LiteLLMAdapter._consecutive_failures = 0
+                            usage = getattr(response, "usage", None)
+                            if usage:
+                                logger.info(
+                                    f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
+                                    extra={
+                                        "event": "llm_completion_success",
+                                        "input_tokens": usage.prompt_tokens,
+                                        "output_tokens": usage.completion_tokens,
+                                        "total_tokens": usage.total_tokens,
+                                        "model": settings.llm_fallback,
+                                        "provider": fb_provider,
+                                        "latency": latency,
+                                    },
+                                )
+                                _metrics.llm_tokens_total.labels(type="input").inc(usage.prompt_tokens)
+                                _metrics.llm_tokens_total.labels(type="output").inc(usage.completion_tokens)
+                            else:
+                                logger.info(
+                                    f"LLM completion successful | Latency: {latency:.3f}s",
+                                    extra={
+                                        "event": "llm_completion_success",
+                                        "model": settings.llm_fallback,
+                                        "provider": fb_provider,
+                                        "latency": latency,
+                                    },
+                                )
+                            return response
+                        except Exception as fb_err:
+                            last_exception = fb_err
+                            _metrics.llm_failures_total.labels(
+                                provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
+                            ).inc()
+                            logger.error(
+                                f"llm_completion_failed | Fallback model {settings.llm_fallback} failed: {fb_err}",
+                                extra={
+                                    "event": "llm_completion_failed",
+                                    "model": settings.llm_fallback,
+                                    "provider": fb_provider,
+                                    "error": str(fb_err),
+                                },
+                            )
+                            raise fb_err
+                        finally:
+                            if fb_span_ctx is not None:
+                                fb_span_ctx.__exit__(None, None, None)
+
+                    if attempt < retries - 1:
+                        _metrics.llm_retries_total.labels(
+                            provider=provider, model=model_name
+                        ).inc()
+                        logger.warning(
+                            f"llm_retry_attempt | Attempt {attempt + 1}/{retries} failed for model {current_model}: {e}",
+                            extra={
+                                "event": "llm_retry_attempt",
+                                "attempt": attempt + 1,
+                                "model": current_model,
+                                "provider": provider,
+                                "error": str(e),
+                            },
+                        )
+                        backoff_delay = (2 ** attempt) * self._base_delay + random.uniform(0, 0.01)
+                        await asyncio.sleep(backoff_delay)
+            finally:
+                if span_ctx is not None:
+                    span_ctx.__exit__(None, None, None)
 
         logger.error(
             f"llm_completion_failed | All {retries} attempts failed for model {kwargs.get('model', self.model)}: {last_exception}",
@@ -277,83 +304,105 @@ class LiteLLMAdapter(metaclass=LiteLLMMetaclass):
             current_model = kwargs.get("model", self.model)
             provider, model_name = _parse_provider_model(current_model)
 
+            tracer = trace.get_tracer("walter-ai") if trace is not None else None
+            span_ctx = None
+            if tracer is not None:
+                span_ctx = tracer.start_as_current_span("llm_completion")
+                span_ctx.__enter__()
+                span = trace.get_current_span()
+                if span:
+                    span.set_attribute("llm.model", current_model)
             try:
-                response = await litellm.acompletion(**kwargs)
-                async with self._get_lock():
-                    LiteLLMAdapter._consecutive_failures = 0
-                if current_model == primary_model:
-                    _metrics.llm_circuit_breaker_active.labels(
-                        provider=primary_provider, model=primary_model_name
-                    ).set(0)
-                active_model = current_model
-                break
-
-            except Exception as e:
-                last_exception = e
-                should_fallback = False
-                async with self._get_lock():
-                    LiteLLMAdapter._consecutive_failures += 1
-                    settings = get_settings()
-                    if (
-                        settings.llm_fallback
-                        and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
-                    ):
-                        should_fallback = True
+                try:
+                    response = await litellm.acompletion(**kwargs)
+                    async with self._get_lock():
                         LiteLLMAdapter._consecutive_failures = 0
-
-                _metrics.llm_failures_total.labels(
-                    provider=provider, model=model_name, error_type=type(e).__name__
-                ).inc()
-
-                if should_fallback:
-                    _metrics.llm_circuit_breaker_active.labels(
-                        provider=primary_provider, model=primary_model_name
-                    ).set(1)
-                    _metrics.llm_fallback_total.inc()
-                    logger.warning(
-                        f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
-                    )
-                    fallback_kwargs = kwargs.copy()
-                    fallback_kwargs["model"] = settings.llm_fallback
-                    fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
-                    try:
-                        response = await litellm.acompletion(**fallback_kwargs)
-                        async with self._get_lock():
+                    if current_model == primary_model:
+                        _metrics.llm_circuit_breaker_active.labels(
+                            provider=primary_provider, model=primary_model_name
+                        ).set(0)
+                    active_model = current_model
+                    break
+                except Exception as e:
+                    last_exception = e
+                    should_fallback = False
+                    async with self._get_lock():
+                        LiteLLMAdapter._consecutive_failures += 1
+                        settings = get_settings()
+                        if (
+                            settings.llm_fallback
+                            and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
+                        ):
+                            should_fallback = True
                             LiteLLMAdapter._consecutive_failures = 0
-                        active_model = settings.llm_fallback
-                        break
-                    except Exception as fb_err:
-                        last_exception = fb_err
-                        _metrics.llm_failures_total.labels(
-                            provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
+
+                    _metrics.llm_failures_total.labels(
+                        provider=provider, model=model_name, error_type=type(e).__name__
+                    ).inc()
+
+                    if should_fallback:
+                        _metrics.llm_circuit_breaker_active.labels(
+                            provider=primary_provider, model=primary_model_name
+                        ).set(1)
+                        _metrics.llm_fallback_total.inc()
+                        logger.warning(
+                            f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
+                        )
+                        fallback_kwargs = kwargs.copy()
+                        fallback_kwargs["model"] = settings.llm_fallback
+                        fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
+                        fb_tracer = trace.get_tracer("walter-ai") if trace is not None else None
+                        fb_span_ctx = None
+                        if fb_tracer is not None:
+                            fb_span_ctx = fb_tracer.start_as_current_span("llm_completion")
+                            fb_span_ctx.__enter__()
+                            span = trace.get_current_span()
+                            if span:
+                                span.set_attribute("llm.model", settings.llm_fallback)
+                        try:
+                            response = await litellm.acompletion(**fallback_kwargs)
+                            async with self._get_lock():
+                                LiteLLMAdapter._consecutive_failures = 0
+                            active_model = settings.llm_fallback
+                            break
+                        except Exception as fb_err:
+                            last_exception = fb_err
+                            _metrics.llm_failures_total.labels(
+                                provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
+                            ).inc()
+                            logger.error(
+                                f"llm_completion_failed | Fallback model {settings.llm_fallback} failed: {fb_err}",
+                                extra={
+                                    "event": "llm_completion_failed",
+                                    "model": settings.llm_fallback,
+                                    "provider": fb_provider,
+                                    "error": str(fb_err),
+                                },
+                            )
+                            kwargs["model"] = settings.llm_fallback
+                        finally:
+                            if fb_span_ctx is not None:
+                                fb_span_ctx.__exit__(None, None, None)
+
+                    if attempt < retries - 1:
+                        _metrics.llm_retries_total.labels(
+                            provider=provider, model=model_name
                         ).inc()
-                        logger.error(
-                            f"llm_completion_failed | Fallback model {settings.llm_fallback} failed: {fb_err}",
+                        logger.warning(
+                            f"llm_retry_attempt | Stream attempt {attempt + 1}/{retries} failed for model {current_model}: {e}",
                             extra={
-                                "event": "llm_completion_failed",
-                                "model": settings.llm_fallback,
-                                "provider": fb_provider,
-                                "error": str(fb_err),
+                                "event": "llm_retry_attempt",
+                                "attempt": attempt + 1,
+                                "model": current_model,
+                                "provider": provider,
+                                "error": str(e),
                             },
                         )
-                        kwargs["model"] = settings.llm_fallback
-
-                if attempt < retries - 1:
-                    _metrics.llm_retries_total.labels(
-                        provider=provider, model=model_name
-                    ).inc()
-                    logger.warning(
-                        f"llm_retry_attempt | Stream attempt {attempt + 1}/{retries} failed for model {current_model}: {e}",
-                        extra={
-                            "event": "llm_retry_attempt",
-                            "attempt": attempt + 1,
-                            "model": current_model,
-                            "provider": provider,
-                            "error": str(e),
-                        },
-                    )
-                    backoff_delay = (2 ** attempt) * self._base_delay + random.uniform(0, 0.01)
-                    await asyncio.sleep(backoff_delay)
+                        backoff_delay = (2 ** attempt) * self._base_delay + random.uniform(0, 0.01)
+                        await asyncio.sleep(backoff_delay)
+            finally:
+                if span_ctx is not None:
+                    span_ctx.__exit__(None, None, None)
 
         if response is None:
             final_provider, final_model_name = _parse_provider_model(kwargs.get("model", self.model))
@@ -373,6 +422,14 @@ class LiteLLMAdapter(metaclass=LiteLLMMetaclass):
             completion_tokens = 0
             first_token_latency = None
             success = False
+            tracer = trace.get_tracer("walter-ai") if trace is not None else None
+            span_ctx = None
+            if tracer is not None:
+                span_ctx = tracer.start_as_current_span("llm_streaming_completion")
+                span_ctx.__enter__()
+                span = trace.get_current_span()
+                if span:
+                    span.set_attribute("llm.model", active_model)
             try:
                 async for chunk in response:
                     if first_token_latency is None:
@@ -412,6 +469,8 @@ class LiteLLMAdapter(metaclass=LiteLLMMetaclass):
                 )
                 raise e
             finally:
+                if span_ctx is not None:
+                    span_ctx.__exit__(None, None, None)
                 if success:
                     total_latency = time.perf_counter() - start_time
                     ttft_str = f" | TTFT: {first_token_latency:.3f}s" if first_token_latency is not None else ""

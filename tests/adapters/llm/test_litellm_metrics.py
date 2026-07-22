@@ -311,4 +311,28 @@ async def test_streaming_midstream_failure_metrics_and_lock():
         )
 
 
+@pytest.mark.asyncio
+async def test_opentelemetry_custom_spans():
+    adapter = LiteLLMAdapter()
+    messages = [{"role": "user", "content": "Hello"}]
+
+    mock_tracer = MagicMock()
+    mock_span_ctx = MagicMock()
+    mock_tracer.start_as_current_span.return_value = mock_span_ctx
+
+    with patch("app.adapters.llm.litellm_adapter.trace") as mock_trace, \
+         patch("litellm.acompletion", new_callable=AsyncMock) as mock_acompletion:
+        mock_trace.get_tracer.return_value = mock_tracer
+        mock_trace.get_current_span.return_value = MagicMock()
+        
+        mock_response = MagicMock()
+        mock_response.usage = None
+        mock_acompletion.return_value = mock_response
+
+        await adapter.get_completion(messages)
+
+        mock_trace.get_tracer.assert_called_with("walter-ai")
+        mock_tracer.start_as_current_span.assert_any_call("llm_completion")
+
+
 

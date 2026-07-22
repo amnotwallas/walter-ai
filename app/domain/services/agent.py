@@ -13,6 +13,11 @@ from app.core.logger import get_logger, trace_id_var
 from app.domain.models.schemas import AgentAction
 import app.core.metrics as _metrics
 
+try:
+    from opentelemetry import trace
+except ImportError:
+    trace = None
+
 logger = get_logger(__name__)
 
 
@@ -147,6 +152,14 @@ class AgentService:
 
     async def _call_tool(self, tool_call, actions_list: list, conversation_id: str = None, tool_logs: list = None, session_id: str = None):
         function_name = tool_call.function.name
+        tracer = trace.get_tracer("walter-ai") if trace is not None else None
+        span_ctx = None
+        if tracer is not None:
+            span_ctx = tracer.start_as_current_span("agent_tool_call")
+            span_ctx.__enter__()
+            span = trace.get_current_span()
+            if span:
+                span.set_attribute("tool.name", function_name)
 
         try:
             raw_args = tool_call.function.arguments
@@ -224,6 +237,9 @@ class AgentService:
                 }
             )
             return f"Error: The action '{function_name}' failed."
+        finally:
+            if span_ctx is not None:
+                span_ctx.__exit__(None, None, None)
 
     # =========================
     # CONVERSATION PREP
