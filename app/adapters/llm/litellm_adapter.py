@@ -18,11 +18,42 @@ def _parse_provider_model(model_name: str) -> Tuple[str, str]:
     return "unknown", model_name
 
 
-class LiteLLMAdapter:
+class LiteLLMMetaclass(type):
+    _consecutive_failures_by_loop = weakref.WeakKeyDictionary()
+
+    @property
+    def _consecutive_failures(cls) -> int:
+        try:
+            loop = asyncio.get_running_loop()
+            if loop not in cls._consecutive_failures_by_loop:
+                cls._consecutive_failures_by_loop[loop] = 0
+            return cls._consecutive_failures_by_loop[loop]
+        except RuntimeError:
+            return getattr(cls, "_sync_consecutive_failures", 0)
+
+    @_consecutive_failures.setter
+    def _consecutive_failures(cls, val: int) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+            cls._consecutive_failures_by_loop[loop] = val
+        except RuntimeError:
+            cls._sync_consecutive_failures = val
+
+    @_consecutive_failures.deleter
+    def _consecutive_failures(cls) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+            if loop in cls._consecutive_failures_by_loop:
+                del cls._consecutive_failures_by_loop[loop]
+        except RuntimeError:
+            if hasattr(cls, "_sync_consecutive_failures"):
+                del cls._sync_consecutive_failures
+
+
+class LiteLLMAdapter(metaclass=LiteLLMMetaclass):
     """
     Concrete adapter using LiteLLM with exponential backoff retries, failover, and metrics.
     """
-    _consecutive_failures: int = 0
     _locks_by_loop = weakref.WeakKeyDictionary()
     _max_retries: int = 3
     _base_delay: float = 0.05
@@ -284,6 +315,7 @@ class LiteLLMAdapter:
                     )
                     fallback_kwargs = kwargs.copy()
                     fallback_kwargs["model"] = settings.llm_fallback
+                    fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
                     try:
                         response = await litellm.acompletion(**fallback_kwargs)
                         async with self._get_lock():
@@ -292,7 +324,6 @@ class LiteLLMAdapter:
                         break
                     except Exception as fb_err:
                         last_exception = fb_err
-                        fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
                         _metrics.llm_failures_total.labels(
                             provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
                         ).inc()
@@ -325,12 +356,13 @@ class LiteLLMAdapter:
                     await asyncio.sleep(backoff_delay)
 
         if response is None:
+            final_provider, final_model_name = _parse_provider_model(kwargs.get("model", self.model))
             logger.error(
                 f"llm_completion_failed | All {retries} stream attempts failed for model {kwargs.get('model', self.model)}: {last_exception}",
                 extra={
                     "event": "llm_completion_failed",
                     "model": kwargs.get("model", self.model),
-                    "provider": primary_provider,
+                    "provider": final_provider,
                     "error": str(last_exception),
                 },
             )
@@ -358,6 +390,17 @@ class LiteLLMAdapter:
                 ).inc()
                 async with self._get_lock():
                     LiteLLMAdapter._consecutive_failures += 1
+                # Trip circuit breaker if consecutive failures limit is reached midstream
+                async with self._get_lock():
+                    settings = get_settings()
+                    if (
+                        settings.llm_fallback
+                        and LiteLLMAdapter._consecutive_failures >= settings.llm_max_failures
+                    ):
+                        _metrics.llm_circuit_breaker_active.labels(
+                            provider=primary_provider, model=primary_model_name
+                        ).set(1)
+                        LiteLLMAdapter._consecutive_failures = 0
                 logger.error(
                     f"llm_completion_failed | Stream failed midstream for model {active_model}: {e}",
                     extra={
@@ -390,4 +433,3 @@ class LiteLLMAdapter:
                     _metrics.llm_tokens_total.labels(type="output").inc(completion_tokens)
 
         return stream_wrapper()
-
