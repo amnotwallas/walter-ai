@@ -23,6 +23,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_telemetry("walter-ai")
+    app.middleware_stack = None
+    FastAPIInstrumentor.instrument_app(app)
+    app.middleware_stack = app.build_middleware_stack()
     audit = get_audit()
     if audit is not None:
         await audit.init_db()
@@ -34,8 +37,6 @@ app = FastAPI(
     version=settings.APP_VERSION,
     lifespan=lifespan
 )
-
-FastAPIInstrumentor.instrument_app(app)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

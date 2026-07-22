@@ -6,16 +6,18 @@ from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from contextvars import ContextVar
 
+try:
+    from opentelemetry import trace
+except ImportError:
+    trace = None
+
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="N/A")
 
 def _get_trace_id() -> str:
-    try:
-        from opentelemetry import trace
+    if trace is not None:
         span = trace.get_current_span()
         if span and span.get_span_context().is_valid:
             return format(span.get_span_context().trace_id, "032x")
-    except ImportError:
-        pass
     return trace_id_var.get() or "N/A"
 
 class JsonFormatter(logging.Formatter):

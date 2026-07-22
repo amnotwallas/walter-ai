@@ -9,8 +9,7 @@ from fastapi.testclient import TestClient
 from app.core.logger import JsonFormatter
 
 @patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter")
-def test_trace_correlation(mock_exporter, caplog):
-    caplog.set_level("INFO")
+def test_trace_correlation(mock_exporter):
     from main import app
 
     log_output = io.StringIO()
