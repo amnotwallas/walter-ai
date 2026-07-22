@@ -107,12 +107,11 @@ resource "aws_instance" "walter_instance" {
               apt-get install -y docker.io docker-compose git
               systemctl start docker
               systemctl enable docker
-              ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
 
               # Wait for EBS volume to attach
               VOLUME_DEV=""
               for i in {1..60}; do
-                for dev in /dev/sdf /dev/xvdf /dev/nvme1n1 /dev/nvme2n1; do
+                for dev in /dev/sdf /dev/xvdf /dev/sdh /dev/xvdh /dev/nvme1n1 /dev/nvme2n1; do
                   if [ -b "$dev" ]; then
                     VOLUME_DEV="$dev"
                     break 2
@@ -152,7 +151,7 @@ resource "aws_ebs_volume" "walter_volume" {
 }
 
 resource "aws_volume_attachment" "walter_volume_attach" {
-  device_name = "/dev/sdf"
+  device_name = "/dev/sdh"
   volume_id   = aws_ebs_volume.walter_volume.id
   instance_id = aws_instance.walter_instance.id
 }
