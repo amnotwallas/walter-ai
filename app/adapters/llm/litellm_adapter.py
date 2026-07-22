@@ -22,9 +22,15 @@ class LiteLLMAdapter:
     Concrete adapter using LiteLLM with exponential backoff retries, failover, and metrics.
     """
     _consecutive_failures: int = 0
-    _lock: asyncio.Lock = asyncio.Lock()
+    _lock: Optional[asyncio.Lock] = None
     _max_retries: int = 3
     _base_delay: float = 0.05
+
+    @classmethod
+    def _get_lock(cls) -> asyncio.Lock:
+        if cls._lock is None:
+            cls._lock = asyncio.Lock()
+        return cls._lock
 
     @property
     def model(self) -> str:
@@ -66,11 +72,12 @@ class LiteLLMAdapter:
             try:
                 response = await litellm.acompletion(**kwargs)
                 latency = time.perf_counter() - start_time
-                async with LiteLLMAdapter._lock:
+                async with self._get_lock():
                     LiteLLMAdapter._consecutive_failures = 0
-                _metrics.llm_circuit_breaker_active.labels(
-                    provider=primary_provider, model=primary_model_name
-                ).set(0)
+                if current_model == primary_model:
+                    _metrics.llm_circuit_breaker_active.labels(
+                        provider=primary_provider, model=primary_model_name
+                    ).set(0)
 
                 usage = getattr(response, "usage", None)
                 if usage:
@@ -103,7 +110,7 @@ class LiteLLMAdapter:
             except Exception as e:
                 last_exception = e
                 should_fallback = False
-                async with LiteLLMAdapter._lock:
+                async with self._get_lock():
                     LiteLLMAdapter._consecutive_failures += 1
                     settings = get_settings()
                     if (
@@ -126,6 +133,44 @@ class LiteLLMAdapter:
                         f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
                     )
                     kwargs["model"] = settings.llm_fallback
+                    fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
+                    try:
+                        response = await litellm.acompletion(**kwargs)
+                        latency = time.perf_counter() - start_time
+                        async with self._get_lock():
+                            LiteLLMAdapter._consecutive_failures = 0
+                        usage = getattr(response, "usage", None)
+                        if usage:
+                            logger.info(
+                                f"LLM completion successful | Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out (total: {usage.total_tokens})",
+                                extra={
+                                    "event": "llm_completion_success",
+                                    "input_tokens": usage.prompt_tokens,
+                                    "output_tokens": usage.completion_tokens,
+                                    "total_tokens": usage.total_tokens,
+                                    "model": settings.llm_fallback,
+                                    "provider": fb_provider,
+                                    "latency": latency,
+                                },
+                            )
+                            _metrics.llm_tokens_total.labels(type="input").inc(usage.prompt_tokens)
+                            _metrics.llm_tokens_total.labels(type="output").inc(usage.completion_tokens)
+                        else:
+                            logger.info(
+                                f"LLM completion successful | Latency: {latency:.3f}s",
+                                extra={
+                                    "event": "llm_completion_success",
+                                    "model": settings.llm_fallback,
+                                    "provider": fb_provider,
+                                    "latency": latency,
+                                },
+                            )
+                        return response
+                    except Exception as fb_err:
+                        last_exception = fb_err
+                        _metrics.llm_failures_total.labels(
+                            provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
+                        ).inc()
 
                 if attempt < retries - 1:
                     _metrics.llm_retries_total.labels(
@@ -189,17 +234,18 @@ class LiteLLMAdapter:
 
             try:
                 response = await litellm.acompletion(**kwargs)
-                async with LiteLLMAdapter._lock:
+                async with self._get_lock():
                     LiteLLMAdapter._consecutive_failures = 0
-                _metrics.llm_circuit_breaker_active.labels(
-                    provider=primary_provider, model=primary_model_name
-                ).set(0)
+                if current_model == primary_model:
+                    _metrics.llm_circuit_breaker_active.labels(
+                        provider=primary_provider, model=primary_model_name
+                    ).set(0)
                 break
 
             except Exception as e:
                 last_exception = e
                 should_fallback = False
-                async with LiteLLMAdapter._lock:
+                async with self._get_lock():
                     LiteLLMAdapter._consecutive_failures += 1
                     settings = get_settings()
                     if (
@@ -222,6 +268,17 @@ class LiteLLMAdapter:
                         f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
                     )
                     kwargs["model"] = settings.llm_fallback
+                    try:
+                        response = await litellm.acompletion(**kwargs)
+                        async with self._get_lock():
+                            LiteLLMAdapter._consecutive_failures = 0
+                        break
+                    except Exception as fb_err:
+                        last_exception = fb_err
+                        fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
+                        _metrics.llm_failures_total.labels(
+                            provider=fb_provider, model=fb_model_name, error_type=type(fb_err).__name__
+                        ).inc()
 
                 if attempt < retries - 1:
                     _metrics.llm_retries_total.labels(

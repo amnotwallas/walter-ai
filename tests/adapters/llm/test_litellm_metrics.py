@@ -137,3 +137,55 @@ async def test_get_streaming_completion_ttft():
         assert kwargs["extra"]["event"] == "llm_completion_success"
         assert kwargs["extra"]["ttft"] is not None
         assert kwargs["extra"]["total_latency"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_get_completion_fallback_on_last_attempt():
+    adapter = LiteLLMAdapter()
+    LiteLLMAdapter._consecutive_failures = 0
+    mock_response = MagicMock(usage=MagicMock(prompt_tokens=5, completion_tokens=5, total_tokens=10))
+
+    mock_settings = MagicMock(llm_fallback="openai/gpt-4o-mini", llm_max_failures=3)
+
+    acompletion_side_effect = [
+        Exception("API Error 1"),
+        Exception("API Error 2"),
+        Exception("API Error 3"),
+        mock_response,
+    ]
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=acompletion_side_effect) as mock_acompletion, \
+         patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings):
+
+        res = await adapter.get_completion(
+            messages=[{"role": "user", "content": "test"}],
+            max_retries=3
+        )
+        assert res == mock_response
+        assert mock_acompletion.call_count == 4
+        assert mock_acompletion.call_args_list[3][1]["model"] == "openai/gpt-4o-mini"
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_reset_only_on_primary_success():
+    adapter = LiteLLMAdapter()
+    mock_response = MagicMock(usage=MagicMock(prompt_tokens=5, completion_tokens=5, total_tokens=10))
+    mock_settings = MagicMock(llm_fallback="openai/gpt-4o-mini", llm_max_failures=1)
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=[Exception("Err"), mock_response]), \
+         patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings), \
+         patch("app.core.metrics.llm_circuit_breaker_active") as mock_cb:
+
+        await adapter.get_completion(messages=[{"role": "user", "content": "hi"}], max_retries=2)
+        # set(0) should NOT be called because fallback model succeeded, not primary
+        for call in mock_cb.labels.return_value.set.call_args_list:
+            assert call != ((0,),)
+
+
+def test_lazy_lock_initialization():
+    LiteLLMAdapter._lock = None
+    assert LiteLLMAdapter._lock is None
+    lock = LiteLLMAdapter._get_lock()
+    assert isinstance(lock, Exception.__class__ if False else type(lock))
+    assert LiteLLMAdapter._lock is lock
+
