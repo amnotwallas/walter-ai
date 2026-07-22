@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from app.adapters.llm.litellm_adapter import LiteLLMAdapter, _parse_provider_model
@@ -182,10 +183,50 @@ async def test_circuit_breaker_reset_only_on_primary_success():
             assert call != ((0,),)
 
 
-def test_lazy_lock_initialization():
-    LiteLLMAdapter._lock = None
-    assert LiteLLMAdapter._lock is None
+@pytest.mark.asyncio
+async def test_lazy_lock_initialization():
+    LiteLLMAdapter._locks_by_loop.clear()
+    loop = asyncio.get_running_loop()
+    assert loop not in LiteLLMAdapter._locks_by_loop
     lock = LiteLLMAdapter._get_lock()
-    assert isinstance(lock, Exception.__class__ if False else type(lock))
-    assert LiteLLMAdapter._lock is lock
+    assert isinstance(lock, asyncio.Lock)
+    assert LiteLLMAdapter._locks_by_loop[loop] is lock
+
+
+@pytest.mark.asyncio
+async def test_kwargs_not_mutated_on_fallback():
+    adapter = LiteLLMAdapter()
+    LiteLLMAdapter._consecutive_failures = 0
+    mock_response = MagicMock(usage=MagicMock(prompt_tokens=5, completion_tokens=5, total_tokens=10))
+    mock_settings = MagicMock(llm_fallback="openai/gpt-4o-mini", llm_max_failures=1)
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=[Exception("Primary Err"), mock_response]) as mock_acompletion, \
+         patch("app.adapters.llm.litellm_adapter.get_settings", return_value=mock_settings):
+
+        await adapter.get_completion(messages=[{"role": "user", "content": "hi"}], max_retries=2)
+        # First call uses primary model
+        assert mock_acompletion.call_args_list[0][1]["model"] == adapter.model
+        # Second call (fallback) uses fallback model
+        assert mock_acompletion.call_args_list[1][1]["model"] == "openai/gpt-4o-mini"
+
+
+@pytest.mark.asyncio
+async def test_streaming_error_does_not_log_success():
+    adapter = LiteLLMAdapter()
+    messages = [{"role": "user", "content": "Hello"}]
+
+    async def mock_error_stream():
+        yield MagicMock(usage=None)
+        raise RuntimeError("Stream broken mid-way")
+
+    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_error_stream()), \
+         patch("app.adapters.llm.litellm_adapter.logger.info") as mock_logger_info:
+
+        stream_gen = await adapter.get_streaming_completion(messages)
+        with pytest.raises(RuntimeError, match="Stream broken mid-way"):
+            async for _ in stream_gen:
+                pass
+
+        mock_logger_info.assert_not_called()
+
 

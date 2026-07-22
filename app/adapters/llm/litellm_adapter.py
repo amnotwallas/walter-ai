@@ -22,15 +22,16 @@ class LiteLLMAdapter:
     Concrete adapter using LiteLLM with exponential backoff retries, failover, and metrics.
     """
     _consecutive_failures: int = 0
-    _lock: Optional[asyncio.Lock] = None
+    _locks_by_loop: dict = {}
     _max_retries: int = 3
     _base_delay: float = 0.05
 
     @classmethod
     def _get_lock(cls) -> asyncio.Lock:
-        if cls._lock is None:
-            cls._lock = asyncio.Lock()
-        return cls._lock
+        loop = asyncio.get_running_loop()
+        if loop not in cls._locks_by_loop:
+            cls._locks_by_loop[loop] = asyncio.Lock()
+        return cls._locks_by_loop[loop]
 
     @property
     def model(self) -> str:
@@ -132,10 +133,11 @@ class LiteLLMAdapter:
                     logger.warning(
                         f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
                     )
-                    kwargs["model"] = settings.llm_fallback
+                    fallback_kwargs = kwargs.copy()
+                    fallback_kwargs["model"] = settings.llm_fallback
                     fb_provider, fb_model_name = _parse_provider_model(settings.llm_fallback)
                     try:
-                        response = await litellm.acompletion(**kwargs)
+                        response = await litellm.acompletion(**fallback_kwargs)
                         latency = time.perf_counter() - start_time
                         async with self._get_lock():
                             LiteLLMAdapter._consecutive_failures = 0
@@ -227,6 +229,7 @@ class LiteLLMAdapter:
         start_time = time.perf_counter()
         last_exception = None
         response = None
+        active_model = kwargs.get("model", self.model)
 
         for attempt in range(retries):
             current_model = kwargs.get("model", self.model)
@@ -240,6 +243,7 @@ class LiteLLMAdapter:
                     _metrics.llm_circuit_breaker_active.labels(
                         provider=primary_provider, model=primary_model_name
                     ).set(0)
+                active_model = current_model
                 break
 
             except Exception as e:
@@ -267,11 +271,13 @@ class LiteLLMAdapter:
                     logger.warning(
                         f"LLM fallback activado tras {settings.llm_max_failures} fallos. Usando: {settings.llm_fallback}"
                     )
-                    kwargs["model"] = settings.llm_fallback
+                    fallback_kwargs = kwargs.copy()
+                    fallback_kwargs["model"] = settings.llm_fallback
                     try:
-                        response = await litellm.acompletion(**kwargs)
+                        response = await litellm.acompletion(**fallback_kwargs)
                         async with self._get_lock():
                             LiteLLMAdapter._consecutive_failures = 0
+                        active_model = settings.llm_fallback
                         break
                     except Exception as fb_err:
                         last_exception = fb_err
@@ -313,8 +319,7 @@ class LiteLLMAdapter:
             prompt_tokens = 0
             completion_tokens = 0
             first_token_latency = None
-            active_model = kwargs.get("model", self.model)
-            provider, _ = _parse_provider_model(active_model)
+            success = False
             try:
                 async for chunk in response:
                     if first_token_latency is None:
@@ -324,23 +329,27 @@ class LiteLLMAdapter:
                         prompt_tokens = usage.prompt_tokens
                         completion_tokens = usage.completion_tokens
                     yield chunk
+                success = True
             finally:
-                total_latency = time.perf_counter() - start_time
-                ttft_str = f" | TTFT: {first_token_latency:.3f}s" if first_token_latency is not None else ""
-                logger.info(
-                    f"LLM stream completed | Tokens: {prompt_tokens} in, {completion_tokens} out (total: {prompt_tokens + completion_tokens})",
-                    extra={
-                        "event": "llm_completion_success",
-                        "input_tokens": prompt_tokens,
-                        "output_tokens": completion_tokens,
-                        "total_tokens": prompt_tokens + completion_tokens,
-                        "model": active_model,
-                        "provider": provider,
-                        "ttft": first_token_latency,
-                        "total_latency": total_latency,
-                    },
-                )
-                _metrics.llm_tokens_total.labels(type="input").inc(prompt_tokens)
-                _metrics.llm_tokens_total.labels(type="output").inc(completion_tokens)
+                if success:
+                    total_latency = time.perf_counter() - start_time
+                    ttft_str = f" | TTFT: {first_token_latency:.3f}s" if first_token_latency is not None else ""
+                    provider, _ = _parse_provider_model(active_model)
+                    logger.info(
+                        f"LLM stream completed | Tokens: {prompt_tokens} in, {completion_tokens} out (total: {prompt_tokens + completion_tokens}){ttft_str}",
+                        extra={
+                            "event": "llm_completion_success",
+                            "input_tokens": prompt_tokens,
+                            "output_tokens": completion_tokens,
+                            "total_tokens": prompt_tokens + completion_tokens,
+                            "model": active_model,
+                            "provider": provider,
+                            "ttft": first_token_latency,
+                            "total_latency": total_latency,
+                        },
+                    )
+                    _metrics.llm_tokens_total.labels(type="input").inc(prompt_tokens)
+                    _metrics.llm_tokens_total.labels(type="output").inc(completion_tokens)
 
         return stream_wrapper()
+
